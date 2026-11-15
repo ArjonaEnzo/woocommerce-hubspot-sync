@@ -1,0 +1,68 @@
+# Local demo stack: WooCommerce (HPOS) + n8n on one network.
+# WordPress: http://localhost:8080  ·  n8n: http://localhost:5679
+# From n8n, WordPress is http://wordpress ; from WordPress, n8n is http://n8n:5678
+name: woo-hubspot
+
+services:
+  db:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: wordpress
+      MARIADB_USER: wordpress
+      MARIADB_PASSWORD: wordpress
+      MARIADB_RANDOM_ROOT_PASSWORD: "1"
+    volumes:
+      - db_data:/var/lib/mysql
+
+  wordpress:
+    image: wordpress:7.0-php8.3-apache
+    restart: unless-stopped
+    depends_on: [db]
+    ports: ["8080:80"]
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress
+      # "local" enables WP Application Passwords over plain HTTP (used by n8n).
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_ENVIRONMENT_TYPE', 'local');
+    volumes:
+      - wp_data:/var/www/html
+      - ./wordpress/mu-plugins:/var/www/html/wp-content/mu-plugins:ro
+
+  # One-off WP-CLI container: docker compose run --rm wpcli wp <command>
+  wpcli:
+    image: wordpress:cli-php8.3
+    profiles: [tools]
+    user: "33:33" # same uid as Apache's www-data in the wordpress image
+    depends_on: [db]
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress
+    volumes:
+      - wp_data:/var/www/html
+      - ./wordpress/mu-plugins:/var/www/html/wp-content/mu-plugins:ro
+      - ./wordpress/cli:/cli:ro
+      - ./data:/data:ro
+
+  n8n:
+    image: n8nio/n8n:2.47.7
+    restart: unless-stopped
+    ports: ["5679:5678"] # 5679 on the host avoids clashing with another local n8n
+    environment:
+      GENERIC_TIMEZONE: America/Argentina/Buenos_Aires
+      TZ: America/Argentina/Buenos_Aires
+      N8N_SECURE_COOKIE: "false"
+      NODE_FUNCTION_ALLOW_BUILTIN: crypto
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./workflows/dist:/workflows:ro
+
+volumes:
+  db_data:
+  wp_data:
+  n8n_data:
