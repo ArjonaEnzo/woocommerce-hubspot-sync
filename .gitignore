@@ -1,0 +1,4 @@
+.superpowers/
+.env
+.hubspot-ids.json
+node_modules/
