@@ -1,0 +1,139 @@
+{
+  "id": "wfErrorHandler01",
+  "name": "F4 · Sync error → HubSpot ticket",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "name": "On error",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "name": "Pipelines req",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return [\n  { json: { method: 'GET', path: '/crm/v3/pipelines/deals', label: 'deal pipelines' } },\n  { json: { method: 'GET', path: '/crm/v3/pipelines/tickets', label: 'ticket pipelines' } },\n];"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "name": "Get pipelines",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "wfHubspotReq0001"
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000004",
+      "name": "Ticket req",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// ---- src/lib/hubspot-schema.js ----\n// HubSpot schema the sync needs. Created idempotently by scripts/hubspot-setup.mjs.\n\nconst PROPERTY_GROUP = { name: 'woocommerce', label: 'WooCommerce', displayOrder: -1 };\n\nconst base = { groupName: PROPERTY_GROUP.name };\nconst text = (name, label, extra = {}) => ({ ...base, name, label, type: 'string', fieldType: 'text', ...extra });\nconst number = (name, label) => ({ ...base, name, label, type: 'number', fieldType: 'number' });\nconst date = (name, label) => ({ ...base, name, label, type: 'date', fieldType: 'date' });\nconst select = (name, label, values) => ({\n  ...base, name, label, type: 'enumeration', fieldType: 'select',\n  options: values.map(([value, optionLabel], displayOrder) => ({ value, label: optionLabel, displayOrder })),\n});\nconst uniqueId = (name, label) => text(name, label, { hasUniqueValue: true });\n\nconst PROPERTIES = {\n  contacts: [\n    text('woo_customer_id', 'Woo customer ID'),\n    number('total_orders', 'Total orders (paid)'),\n    number('total_revenue', 'Total revenue (net of refunds)'),\n    date('first_order_date', 'First order date'),\n    date('last_order_date', 'Last order date'),\n    select('customer_segment', 'Customer segment', [['new', 'New'], ['repeat', 'Repeat'], ['vip', 'VIP']]),\n    select('data_quality_status', 'Data quality status', [['ok', 'OK'], ['needs_review', 'Needs review']]),\n    text('data_quality_issues', 'Data quality issues', { type: 'string', fieldType: 'textarea' }),\n  ],\n  deals: [\n    uniqueId('woo_order_id', 'Woo order ID'),\n    number('refund_amount', 'Refund amount'),\n    text('woo_status', 'Woo order status'),\n  ],\n  products: [uniqueId('woo_product_id', 'Woo product ID')],\n  line_items: [uniqueId('woo_line_item_id', 'Woo line item ID')],\n  // One ticket per distinct sync problem, so re-running the backfill never duplicates tickets.\n  tickets: [uniqueId('sync_error_key', 'Sync error key')],\n};\n\nconst stage = (key, label, displayOrder, metadata) => ({ key, label, displayOrder, metadata });\n\nconst DEAL_PIPELINE = {\n  label: 'WooCommerce',\n  displayOrder: 1,\n  stages: [\n    stage('pending_payment', 'Pending payment', 0, { probability: '0.2' }),\n    stage('paid', 'Paid', 1, { probability: '0.9' }),\n    stage('closedwon', 'Closed won', 2, { probability: '1.0' }),\n    stage('closedlost', 'Closed lost', 3, { probability: '0.0' }),\n    stage('refunded', 'Refunded', 4, { probability: '0.0' }),\n  ],\n};\n\nconst TICKET_PIPELINE = {\n  label: 'Integration errors',\n  displayOrder: 1,\n  stages: [\n    stage('new', 'New', 0, { ticketState: 'OPEN' }),\n    stage('resolved', 'Resolved', 1, { ticketState: 'CLOSED' }),\n  ],\n};\n\n// ---- src/lib/retry.js ----\n// Retry policy for HubSpot calls (flow F4). Ceiling: 100 requests / 10 s, batches of ≤100.\n\nconst MAX_ATTEMPTS = 3;\n\nfunction shouldRetry(status) {\n  return status === 429 || (status >= 500 && status <= 599);\n}\n\nfunction backoffDelayMs(attempt, retryAfterHeader) {\n  const retryAfter = Number(retryAfterHeader);\n  if (retryAfterHeader != null && Number.isFinite(retryAfter) && retryAfter > 0) return retryAfter * 1000;\n  return 1000 * 2 ** (attempt - 1);\n}\n\nfunction chunk(items, size) {\n  const out = [];\n  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));\n  return out;\n}\n\n// ---- src/lib/validate.js ----\n// Data-quality checks (flow F3). Pure functions: inlined into n8n Code nodes by build-workflows.\n// Rule: never block the sync. Invalid values become null and are reported as issues.\n\nconst EMAIL_RE = /^[^\\s@]+@[^\\s@]+\\.[a-z]{2,}$/;\n\nconst DISPOSABLE_DOMAINS = new Set([\n  'mailinator.com', '10minutemail.com', 'guerrillamail.com', 'yopmail.com', 'tempmail.com',\n]);\n\n// Common typos of webmail domains → correct domain.\nconst DOMAIN_TYPOS = {\n  'gmial.com': 'gmail.com', 'gmal.com': 'gmail.com', 'gnail.com': 'gmail.com', 'gmail.con': 'gmail.com',\n  'gmial.con': 'gmail.com', 'gmail.cmo': 'gmail.com',\n  'hotmial.com': 'hotmail.com', 'hotmal.com': 'hotmail.com', 'hotmail.con': 'hotmail.com',\n  'yaho.com': 'yahoo.com', 'yahoo.con': 'yahoo.com', 'outlok.com': 'outlook.com',\n};\n\nconst DIAL_CODES = {\n  AR: '54', US: '1', MX: '52', ES: '34', CL: '56', UY: '598', BR: '55', CO: '57', PE: '51', GB: '44', DE: '49',\n};\n\nconst COUNTRY_NAMES = {\n  argentina: 'AR',\n  'united states': 'US', usa: 'US', 'estados unidos': 'US', eeuu: 'US',\n  mexico: 'MX', 'méxico': 'MX',\n  spain: 'ES', 'españa': 'ES', espana: 'ES',\n  chile: 'CL', uruguay: 'UY',\n  brazil: 'BR', brasil: 'BR',\n  colombia: 'CO', peru: 'PE', 'perú': 'PE',\n  'united kingdom': 'GB', uk: 'GB', 'reino unido': 'GB',\n  germany: 'DE', alemania: 'DE',\n};\n\nfunction validateEmail(raw) {\n  const email = String(raw ?? '').trim().toLowerCase();\n  if (!EMAIL_RE.test(email)) return { value: null, issue: 'email_invalid_format' };\n  const domain = email.split('@')[1];\n  if (DOMAIN_TYPOS[domain]) return { value: null, issue: `email_typo_domain:${domain}→${DOMAIN_TYPOS[domain]}` };\n  if (DISPOSABLE_DOMAINS.has(domain)) return { value: null, issue: 'email_disposable' };\n  return { value: email, issue: null };\n}\n\nfunction normalizePhone(raw, countryIso2) {\n  const text = String(raw ?? '').trim();\n  if (!text) return { value: null, issue: null };\n  const invalid = { value: null, issue: 'phone_invalid' };\n  const digits = text.replace(/\\D/g, '');\n  if (/[a-z]/i.test(text) || !digits) return invalid;\n\n  let e164;\n  if (text.startsWith('+')) {\n    e164 = digits;\n  } else {\n    const dial = DIAL_CODES[countryIso2] ?? DIAL_CODES.AR;\n    let national = digits;\n    if (national.startsWith(dial) && national.length > 10) national = national.slice(dial.length);\n    national = national.replace(/^0/, ''); // trunk prefix (AR, ES, GB, DE…)\n    if (national.length < 6) return invalid;\n    e164 = dial + national;\n  }\n  if (e164.length < 8 || e164.length > 15) return invalid;\n  return { value: `+${e164}`, issue: null };\n}\n\nfunction normalizeCountry(raw) {\n  const text = String(raw ?? '').trim();\n  if (!text) return { value: null, issue: null };\n  const upper = text.toUpperCase();\n  if (DIAL_CODES[upper]) return { value: upper, issue: null };\n  const byName = COUNTRY_NAMES[text.toLowerCase()];\n  return byName ? { value: byName, issue: null } : { value: null, issue: 'country_unknown' };\n}\n\nfunction validateCustomer(billing = {}) {\n  const issues = [];\n  const take = (result) => {\n    if (result.issue) issues.push(result.issue);\n    return result.value;\n  };\n  const email = take(validateEmail(billing.email));\n  const country = take(normalizeCountry(billing.country));\n  const phone = take(normalizePhone(billing.phone, country));\n  const clean = {\n    email,\n    phone,\n    country,\n    firstname: String(billing.first_name ?? '').trim() || null,\n    lastname: String(billing.last_name ?? '').trim() || null,\n    company: String(billing.company ?? '').trim() || null,\n  };\n  return { clean, issues };\n}\n\n// ---- src/lib/mapping.js ----\n// WooCommerce order → HubSpot CRM inputs. Pure functions, inlined into n8n Code nodes.\n\n// Woo status → internal stage key. Real HubSpot stage ids come from hubspot-setup (.hubspot-ids.json).\nconst STAGE_BY_STATUS = {\n  pending: 'pending_payment',\n  'on-hold': 'pending_payment',\n  processing: 'paid',\n  completed: 'closedwon',\n  cancelled: 'closedlost',\n  failed: 'closedlost',\n  refunded: 'refunded',\n};\n\nconst PAID_STATUSES = new Set(['processing', 'completed']);\n\nconst FREE_EMAIL_DOMAINS = new Set([\n  'gmail.com', 'googlemail.com', 'hotmail.com', 'outlook.com', 'live.com', 'yahoo.com', 'yahoo.com.ar',\n  'icloud.com', 'aol.com', 'proton.me', 'protonmail.com',\n]);\n\nconst money = (n) => (Math.round(n * 100) / 100).toFixed(2);\n\nfunction refundTotal(order) {\n  return (order.refunds ?? []).reduce((sum, r) => sum + Math.abs(Number(r.total) || 0), 0);\n}\n\nfunction netTotal(order) {\n  return Math.max(0, Number(order.total) - refundTotal(order));\n}\n\nconst isoUtc = (wooGmtDate) => new Date(`${wooGmtDate}Z`).toISOString();\n\nfunction companyDomain(email) {\n  const { value } = validateEmail(email);\n  if (!value) return null;\n  const domain = value.split('@')[1];\n  return FREE_EMAIL_DOMAINS.has(domain) ? null : domain;\n}\n\nfunction planCompanies(orders) {\n  const byDomain = new Map();\n  for (const order of orders) {\n    const domain = companyDomain(order.billing?.email);\n    if (!domain) continue;\n    const name = String(order.billing?.company ?? '').trim();\n    const existing = byDomain.get(domain);\n    if (!existing || (existing.name === domain && name)) byDomain.set(domain, { domain, name: name || domain });\n  }\n  return [...byDomain.values()];\n}\n\nfunction buildContactInput(order) {\n  const { clean, issues } = validateCustomer(order.billing);\n  const properties = {};\n  for (const [key, value] of Object.entries(clean)) if (value) properties[key] = value;\n  if (Number(order.customer_id) > 0) properties.woo_customer_id = String(order.customer_id);\n  properties.data_quality_status = issues.length ? 'needs_review' : 'ok';\n  properties.data_quality_issues = issues.join('; ');\n  return { email: clean.email, properties, issues };\n}\n\nfunction buildProductInputs(orders) {\n  const byId = new Map();\n  for (const order of orders) {\n    for (const item of order.line_items ?? []) {\n      const id = String(item.product_id);\n      if (byId.has(id)) continue;\n      byId.set(id, {\n        idProperty: 'woo_product_id',\n        id,\n        properties: { woo_product_id: id, name: item.name, price: money(Number(item.price)), hs_sku: item.sku || undefined },\n      });\n    }\n  }\n  return [...byId.values()];\n}\n\nfunction buildDealInput(order, { pipelineId, stageIds }) {\n  const stageKey = STAGE_BY_STATUS[order.status];\n  if (!stageKey) throw new Error(`Unknown Woo status \"${order.status}\" on order ${order.id}`);\n  const id = String(order.id);\n  const name = [order.billing?.first_name, order.billing?.last_name].filter(Boolean).join(' ').trim();\n  return {\n    idProperty: 'woo_order_id',\n    id,\n    properties: {\n      woo_order_id: id,\n      dealname: `Woo #${order.number ?? id}${name ? ` — ${name}` : ''}`,\n      pipeline: pipelineId,\n      dealstage: stageIds[stageKey],\n      amount: order.status === 'refunded' ? money(0) : money(netTotal(order)),\n      refund_amount: money(refundTotal(order)),\n      closedate: isoUtc(order.date_created_gmt),\n      woo_status: order.status,\n      deal_currency_code: order.currency,\n    },\n  };\n}\n\nfunction buildLineItemInputs(order) {\n  return (order.line_items ?? []).map((item) => {\n    const id = String(item.id);\n    return {\n      idProperty: 'woo_line_item_id',\n      id,\n      wooProductId: String(item.product_id),\n      properties: {\n        woo_line_item_id: id,\n        name: item.name,\n        quantity: String(item.quantity),\n        price: money(Number(item.price)),\n        hs_sku: item.sku || undefined,\n      },\n    };\n  });\n}\n\nfunction aggregateCustomer(orders) {\n  const paid = orders.filter((o) => PAID_STATUSES.has(o.status));\n  const dates = paid.map((o) => o.date_created_gmt.slice(0, 10)).sort();\n  return {\n    total_orders: paid.length,\n    total_revenue: Math.round(paid.reduce((s, o) => s + netTotal(o), 0) * 100) / 100,\n    first_order_date: dates[0] ?? null,\n    last_order_date: dates.at(-1) ?? null,\n  };\n}\n\n// ---- src/lib/sync-plan.js ----\n// Turns a batch of Woo orders into the ordered list of HubSpot requests the sync-orders workflow makes.\n// Every function returns plain request objects { method, path, body, label } — or { skip: true, label }\n// when there is nothing to send — so the n8n flow stays linear and every step is unit-tested here.\n\n\n\nconst BATCH = 100;\nconst skip = (label) => ({ skip: true, label });\nconst post = (path, body, label) => ({ method: 'POST', path, body, label });\nconst batches = (path, inputs, label) =>\n  (inputs.length ? chunk(inputs, BATCH).map((part, i) => post(path, { inputs: part }, `${label} ${i + 1}`)) : [skip(label)]);\nconst lower = (s) => String(s ?? '').trim().toLowerCase();\n\nfunction pipelineContext(dealPipelines, ticketPipelines) {\n  const find = (list, def) => {\n    const p = (list?.results ?? []).find((x) => x.label === def.label);\n    if (!p) throw new Error(`HubSpot pipeline \"${def.label}\" not found — run scripts/hubspot-setup.mjs first`);\n    const ids = {};\n    for (const s of def.stages) {\n      const stage = p.stages.find((x) => x.label === s.label);\n      if (!stage) throw new Error(`Stage \"${s.label}\" missing in pipeline \"${def.label}\" — run scripts/hubspot-setup.mjs`);\n      ids[s.key] = stage.id;\n    }\n    return { id: p.id, ids };\n  };\n  const deals = find(dealPipelines, DEAL_PIPELINE);\n  const tickets = find(ticketPipelines, TICKET_PIPELINE);\n  return { pipelineId: deals.id, stageIds: deals.ids, ticketPipelineId: tickets.id, ticketStageNewId: tickets.ids.new };\n}\n\nfunction contactRequests(orders, history) {\n  const byEmail = new Map();\n  for (const order of orders) {\n    const contact = buildContactInput(order);\n    if (contact.email) byEmail.set(contact.email, contact);\n  }\n  const inputs = [...byEmail.values()].map(({ email, properties }) => {\n    const agg = aggregateCustomer(history.filter((o) => lower(o.billing?.email) === email));\n    const extra = Object.fromEntries(Object.entries(agg).filter(([, v]) => v !== null));\n    return { idProperty: 'email', id: email, properties: { ...properties, ...extra } };\n  });\n  return batches('/crm/v3/objects/contacts/batch/upsert', inputs, 'contacts');\n}\n\nfunction companySearchRequest(orders) {\n  const domains = planCompanies(orders).map((c) => c.domain);\n  if (!domains.length) return skip('company search');\n  return post('/crm/v3/objects/companies/search', {\n    filterGroups: [{ filters: [{ propertyName: 'domain', operator: 'IN', values: domains }] }],\n    properties: ['domain', 'name'],\n    limit: BATCH,\n  }, 'company search');\n}\n\nfunction companyCreateRequest(orders, searchResponse) {\n  const found = idMap([searchResponse], 'domain');\n  const inputs = planCompanies(orders)\n    .filter((c) => !found.has(c.domain))\n    .map((c) => ({ properties: { domain: c.domain, name: c.name } }));\n  return inputs.length ? post('/crm/v3/objects/companies/batch/create', { inputs }, 'company create') : skip('company create');\n}\n\nconst productRequests = (orders) =>\n  batches('/crm/v3/objects/products/batch/upsert', buildProductInputs(orders), 'products');\n\nfunction dealRequests(orders, ctx) {\n  const inputs = [];\n  const problems = [];\n  for (const order of orders) {\n    try {\n      inputs.push(buildDealInput(order, ctx));\n    } catch (err) {\n      problems.push({\n        key: `unknown-status:${order.id}`,\n        subject: `Woo order #${order.number ?? order.id} not synced: unknown status`,\n        content: err.message,\n        priority: 'HIGH',\n      });\n    }\n  }\n  return { requests: batches('/crm/v3/objects/deals/batch/upsert', inputs, 'deals'), problems };\n}\n\nfunction lineItemRequests(orders, productIds) {\n  const inputs = orders.flatMap(buildLineItemInputs).map(({ wooProductId, ...input }) => {\n    const hsProductId = productIds.get(wooProductId);\n    return hsProductId ? { ...input, properties: { ...input.properties, hs_product_id: hsProductId } } : input;\n  });\n  return batches('/crm/v3/objects/line_items/batch/upsert', inputs, 'line items');\n}\n\n/** value of `property` (lowercased) → HubSpot record id, from any number of batch/search responses. */\nfunction idMap(responses, property) {\n  const map = new Map();\n  for (const r of responses) {\n    for (const rec of r?.body?.results ?? []) {\n      const value = rec.properties?.[property];\n      if (value != null) map.set(lower(value), String(rec.id));\n    }\n  }\n  return map;\n}\n\nfunction associationRequests({ orders, contactIds, companyIds, dealIds, lineItemIds }) {\n  const pairs = { 'contacts/companies': new Map(), 'deals/contacts': new Map(), 'deals/companies': new Map(), 'line_items/deals': new Map() };\n  const add = (kind, from, to) => { if (from && to) pairs[kind].set(`${from}>${to}`, { from: { id: from }, to: { id: to } }); };\n  for (const order of orders) {\n    const email = lower(order.billing?.email);\n    const contactId = contactIds.get(email);\n    const companyId = companyIds.get(companyDomain(email) ?? '');\n    const dealId = dealIds.get(String(order.id));\n    add('contacts/companies', contactId, companyId);\n    add('deals/contacts', dealId, contactId);\n    add('deals/companies', dealId, companyId);\n    for (const item of order.line_items ?? []) add('line_items/deals', lineItemIds.get(String(item.id)), dealId);\n  }\n  return Object.entries(pairs).map(([kind, map]) => (map.size\n    ? post(`/crm/v4/associations/${kind}/batch/associate/default`, { inputs: [...map.values()] }, `associate ${kind}`)\n    : skip(`associate ${kind}`)));\n}\n\nfunction syncProblems(orders, responses, extra = []) {\n  const problems = [];\n  for (const order of orders) {\n    const contact = buildContactInput(order);\n    if (!contact.email) {\n      problems.push({\n        key: `no-contact:${order.id}`,\n        subject: `Woo order #${order.number ?? order.id} synced without a contact`,\n        content: `Billing email \"${order.billing?.email ?? ''}\" was rejected (${contact.issues.join('; ')}). `\n          + 'The deal was synced; fix the email in WooCommerce and save the order to link a contact.',\n        priority: 'MEDIUM',\n      });\n    }\n  }\n  for (const r of responses) {\n    for (const e of r?.body?.errors ?? []) {\n      for (const id of e.context?.ids ?? ['unknown']) {\n        problems.push({\n          key: `batch:${String(r.label).replace(/ \\d+$/, '')}:${id}`,\n          subject: `HubSpot rejected ${r.label} record ${id}`,\n          content: `${e.category ?? 'ERROR'}: ${e.message ?? ''}`.slice(0, 2000),\n          priority: 'HIGH',\n        });\n      }\n    }\n  }\n  return [...problems, ...extra];\n}\n\nfunction ticketReadRequest(problems) {\n  if (!problems.length) return skip('ticket lookup');\n  return post('/crm/v3/objects/tickets/batch/read', {\n    idProperty: 'sync_error_key',\n    inputs: problems.slice(0, BATCH).map((p) => ({ id: p.key })),\n    properties: ['sync_error_key'],\n  }, 'ticket lookup');\n}\n\nfunction ticketCreateRequest(problems, readResponse, ctx) {\n  const existing = idMap([readResponse], 'sync_error_key');\n  const inputs = problems.slice(0, BATCH)\n    .filter((p) => !existing.has(lower(p.key)))\n    .map((p) => ({\n      properties: {\n        sync_error_key: p.key,\n        subject: p.subject,\n        content: p.content,\n        hs_pipeline: ctx.ticketPipelineId,\n        hs_pipeline_stage: ctx.ticketStageNewId,\n        hs_ticket_priority: p.priority,\n      },\n    }));\n  return inputs.length ? post('/crm/v3/objects/tickets/batch/create', { inputs }, 'tickets') : skip('tickets');\n}\n\nconst failure = $('On error').first().json;\nconst [deals, tickets] = $('Get pipelines').all().map((item) => item.json);\nconst ctx = pipelineContext(deals.body, tickets.body);\nconst executionId = failure.execution?.id ?? 'unknown';\nconst problem = {\n  key: `execution:${failure.workflow?.id ?? 'wf'}:${executionId}`,\n  subject: `Sync failed: ${failure.workflow?.name ?? 'workflow'} (execution ${executionId})`,\n  content: [\n    `Node: ${failure.execution?.lastNodeExecuted ?? '?'}`,\n    `Error: ${failure.execution?.error?.message ?? 'unknown'}`,\n    failure.execution?.url ? `Execution: ${failure.execution.url}` : '',\n    'Re-run the workflow after fixing the cause; every write is an upsert, so re-running is safe.',\n  ].filter(Boolean).join('\\n').slice(0, 2000),\n  priority: 'HIGH',\n};\nreturn [{ json: ticketCreateRequest([problem], null, ctx) }];"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000005",
+      "name": "Create ticket",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        960,
+        0
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "wfHubspotReq0001"
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    }
+  ],
+  "connections": {
+    "On error": {
+      "main": [
+        [
+          {
+            "node": "Pipelines req",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pipelines req": {
+      "main": [
+        [
+          {
+            "node": "Get pipelines",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get pipelines": {
+      "main": [
+        [
+          {
+            "node": "Ticket req",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ticket req": {
+      "main": [
+        [
+          {
+            "node": "Create ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "pinData": {},
+  "tags": []
+}

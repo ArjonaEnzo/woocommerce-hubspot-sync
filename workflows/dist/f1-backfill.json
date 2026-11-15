@@ -1,0 +1,201 @@
+{
+  "id": "wfBackfill000001",
+  "name": "F1 · Woo → HubSpot backfill",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "00000000-0000-4000-8000-000000000006",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000007",
+      "name": "Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return [{ json: { startChunk: 0, chunkSize: 100 } }];"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000008",
+      "name": "Fetch Woo orders",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.WOO_BASE_URL }}/wp-json/wc/v3/orders",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "per_page",
+              "value": "100"
+            },
+            {
+              "name": "orderby",
+              "value": "id"
+            },
+            {
+              "name": "order",
+              "value": "asc"
+            }
+          ]
+        },
+        "options": {
+          "pagination": {
+            "pagination": {
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": [
+                  {
+                    "type": "qs",
+                    "name": "page",
+                    "value": "={{ $pageCount + 1 }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "responseIsEmpty",
+              "limitPagesFetched": true,
+              "maxRequests": 500
+            }
+          }
+        }
+      },
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "credWooBasic0001",
+          "name": "WooCommerce (WP application password)"
+        }
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000009",
+      "name": "Chunk",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const { startChunk, chunkSize } = $('Config').first().json;\nconst all = $input.all().map((item) => item.json).filter((o) => o && o.id);\nconst emailOf = (o) => String(o.billing?.email ?? '').trim().toLowerCase();\nconst byEmail = new Map();\nfor (const o of all) byEmail.set(emailOf(o), [...(byEmail.get(emailOf(o)) ?? []), o]);\nconst chunks = [];\nfor (let i = 0; i * chunkSize < all.length; i++) {\n  if (i < startChunk) continue;\n  const orders = all.slice(i * chunkSize, (i + 1) * chunkSize);\n  const history = [...new Set(orders.map(emailOf))].flatMap((e) => byEmail.get(e) ?? []);\n  chunks.push({ json: { chunk: i, orders, history } });\n}\nreturn chunks;"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000010",
+      "name": "Sync chunk",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        960,
+        0
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "wfSyncOrders0001"
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000011",
+      "name": "Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const runs = $input.all().map((item, i) => ({ chunk: $('Chunk').all()[i].json.chunk, ...item.json }));\nconst total = (k) => runs.reduce((n, r) => n + (r[k] ?? 0), 0);\nreturn [{ json: { chunks: runs.length, orders: total('orders'), deals: total('deals'), contacts: total('contacts'),\n  lineItems: total('lineItems'), ticketsCreated: total('ticketsCreated'), requests: total('requests'), runs } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Fetch Woo orders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Woo orders": {
+      "main": [
+        [
+          {
+            "node": "Chunk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chunk": {
+      "main": [
+        [
+          {
+            "node": "Sync chunk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sync chunk": {
+      "main": [
+        [
+          {
+            "node": "Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "errorWorkflow": "wfErrorHandler01"
+  },
+  "pinData": {},
+  "tags": []
+}
