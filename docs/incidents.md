@@ -5,3 +5,6 @@ Dated notes written while building. Each: what happened → cause → fix.
 - 2026-11-15 — WooCommerce REST basic auth is refused over plain HTTP (Woo only accepts consumer key/secret basic auth on HTTPS, otherwise expects OAuth 1.0a). → Used a WordPress Application Password instead; WordPress allows those over HTTP only when `WP_ENVIRONMENT_TYPE=local`.
 - 2026-11-15 — Woo webhooks to `http://n8n:5678` are blocked: delivery uses `wp_safe_remote_request()`, which rejects private hosts. → mu-plugin whitelists the `n8n` hostname only.
 - 2026-11-15 — Current WooCommerce requires WordPress 7.0; the first stack pinned wordpress:6.8 and `wp plugin install woocommerce` refused. → Pinned wordpress:7.0.
+- 2026-11-15 — n8n 2.x refused to run the HubSpot sub-workflow: "Workflow is not active and cannot be executed." Sub-workflows must be published now. → Import script publishes the sub-workflows (`n8n publish:workflow`).
+- 2026-11-15 — POST requests reached HubSpot with an empty body. The HTTP node's "Send Body" was an expression, and n8n drops the parameters that depend on it (JSON body) when it is not a literal `true`. → Two HTTP nodes (with/without body) behind an IF.
+- 2026-11-15 — Port 5678 already taken by another local n8n; the demo's n8n is published on 5679.
