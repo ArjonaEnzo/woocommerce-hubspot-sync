@@ -56,6 +56,14 @@ test('company search by domain IN finds created companies', async () => {
   assert.deepEqual(r.body.results.map((c) => c.properties.domain), ['acme.test']);
 });
 
+test('batch read by unique property returns only existing records', async () => {
+  await call('POST', '/crm/v3/objects/tickets/batch/create', { inputs: [{ properties: { sync_error_key: 'k1', subject: 's' } }] });
+  const r = await call('POST', '/crm/v3/objects/tickets/batch/read', {
+    idProperty: 'sync_error_key', inputs: [{ id: 'k1' }, { id: 'k2' }], properties: ['sync_error_key'],
+  });
+  assert.deepEqual(r.body.results.map((t) => t.properties.sync_error_key), ['k1']);
+});
+
 test('default associations are stored once per pair', async () => {
   const body = { inputs: [{ from: { id: '1' }, to: { id: '2' } }] };
   await call('POST', '/crm/v4/associations/deals/contacts/batch/associate/default', body);

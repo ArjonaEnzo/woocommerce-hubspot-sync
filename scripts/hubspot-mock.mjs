@@ -57,6 +57,12 @@ export function createMockHubSpot() {
       return [201, { status: 'COMPLETE', results: body.inputs.map((i) => create(m[1], i.properties)) }];
     }],
 
+    ['POST', /^\/crm\/v3\/objects\/(\w+)\/batch\/read$/, (m, body) => {
+      if (!store[m[1]]) return [404, { message: `unknown object ${m[1]}` }];
+      const results = (body?.inputs ?? []).map((i) => findBy(m[1], body.idProperty, i.id)).filter(Boolean);
+      return [results.length === (body?.inputs ?? []).length ? 200 : 207, { status: 'COMPLETE', results }];
+    }],
+
     ['POST', /^\/crm\/v3\/objects\/(\w+)\/search$/, (m, body) => {
       const filters = body?.filterGroups?.[0]?.filters ?? [];
       const results = [...store[m[1]].values()].filter((r) => filters.every((f) => {
