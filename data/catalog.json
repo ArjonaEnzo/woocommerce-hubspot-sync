@@ -1,0 +1,17 @@
+[
+  { "sku": "DEMO-TEE-01", "name": "Organic Cotton Tee", "price": 24.00, "category": "Apparel" },
+  { "sku": "DEMO-HOOD-01", "name": "Heavyweight Hoodie", "price": 59.00, "category": "Apparel" },
+  { "sku": "DEMO-CAP-01", "name": "Six-Panel Cap", "price": 19.00, "category": "Accessories" },
+  { "sku": "DEMO-BEAN-01", "name": "Merino Beanie", "price": 29.00, "category": "Accessories" },
+  { "sku": "DEMO-MUG-01", "name": "Ceramic Mug 350 ml", "price": 16.00, "category": "Home" },
+  { "sku": "DEMO-BOTL-01", "name": "Insulated Bottle 750 ml", "price": 34.00, "category": "Home" },
+  { "sku": "DEMO-BAG-01", "name": "Canvas Tote Bag", "price": 22.00, "category": "Accessories" },
+  { "sku": "DEMO-PACK-01", "name": "Everyday Backpack 20 L", "price": 89.00, "category": "Bags" },
+  { "sku": "DEMO-JACK-01", "name": "Rain Shell Jacket", "price": 149.00, "category": "Apparel" },
+  { "sku": "DEMO-SOCK-01", "name": "Wool Socks (3-pack)", "price": 18.00, "category": "Apparel" },
+  { "sku": "DEMO-NOTE-01", "name": "Dot Grid Notebook A5", "price": 14.00, "category": "Stationery" },
+  { "sku": "DEMO-PEN-01", "name": "Brass Pen", "price": 39.00, "category": "Stationery" },
+  { "sku": "DEMO-LAMP-01", "name": "Desk Lamp", "price": 79.00, "category": "Home" },
+  { "sku": "DEMO-CHAIR-01", "name": "Ergonomic Chair", "price": 349.00, "category": "Office" },
+  { "sku": "DEMO-DESK-01", "name": "Standing Desk Frame", "price": 499.00, "category": "Office" }
+]
