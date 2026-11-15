@@ -58,9 +58,26 @@ services:
       TZ: America/Argentina/Buenos_Aires
       N8N_SECURE_COOKIE: "false"
       NODE_FUNCTION_ALLOW_BUILTIN: crypto
+      # Workflows read these via $env (values come from .env through Compose interpolation).
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      WOO_BASE_URL: http://wordpress
+      WOO_WEBHOOK_SECRET: ${WOO_WEBHOOK_SECRET:-}
+      # Point to http://hubspot-mock:4010 to run the whole flow without a HubSpot account.
+      HUBSPOT_BASE_URL: ${HUBSPOT_BASE_URL:-https://api.hubapi.com}
     volumes:
       - n8n_data:/home/node/.n8n
       - ./workflows/dist:/workflows:ro
+
+  # Offline stand-in for the HubSpot endpoints the sync uses (tests, CI, demos without an account).
+  hubspot-mock:
+    image: node:24-alpine
+    profiles: [mock]
+    command: ["node", "/app/scripts/hubspot-mock.mjs"]
+    environment:
+      PORT: "4010"
+    ports: ["4010:4010"]
+    volumes:
+      - ./:/app:ro
 
 volumes:
   db_data:
