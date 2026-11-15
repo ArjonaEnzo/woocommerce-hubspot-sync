@@ -79,7 +79,7 @@ export function createMockHubSpot() {
       counts: { ...Object.fromEntries(Object.entries(store).map(([t, s]) => [t, s.size])), associations: associations.size },
       records: Object.fromEntries(Object.entries(store).map(([t, s]) => [t, [...s.values()]])),
       associations: [...associations],
-      requests: requests.length,
+      requests,
     }]],
     ['POST', /^\/__fail$/, (_m, body) => {
       failures.status = body.status;
@@ -106,7 +106,7 @@ export function createMockHubSpot() {
     const isHelper = url.pathname.startsWith('/__');
 
     if (!isHelper) {
-      requests.push(`${req.method} ${url.pathname}`);
+      requests.push({ method: req.method, path: url.pathname, body: raw.slice(0, 300) });
       if (!/^Bearer \S+/.test(req.headers.authorization ?? '')) return send(401, { message: 'missing bearer token' });
       if (failures.times > 0) {
         failures.times--;

@@ -1,0 +1,371 @@
+{
+  "id": "wfHubspotReq0001",
+  "name": "HubSpot request (retry + backoff)",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "name": "Request in",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "name": "Prepare",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "jsCode": "\nconst req = $input.first().json;\nconst base = ($env.HUBSPOT_BASE_URL || 'https://api.hubapi.com').replace(/\\/$/, '');\nreturn [{ json: { ...req, url: base + req.path, hasBody: req.body != null } }];"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "name": "Skip?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Skip?-cond",
+              "leftValue": "={{ $json.skip === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000004",
+      "name": "Has body?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Has body?-cond",
+              "leftValue": "={{ $('Prepare').first().json.hasBody }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000005",
+      "name": "HubSpot API (body)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        0
+      ],
+      "parameters": {
+        "method": "={{ $('Prepare').first().json.method }}",
+        "url": "={{ $('Prepare').first().json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Prepare').first().json.body) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "credHubspot00001",
+          "name": "HubSpot Service Key"
+        }
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000006",
+      "name": "HubSpot API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        0
+      ],
+      "parameters": {
+        "method": "={{ $('Prepare').first().json.method }}",
+        "url": "={{ $('Prepare').first().json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "credHubspot00001",
+          "name": "HubSpot Service Key"
+        }
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000007",
+      "name": "Classify",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// ---- src/lib/retry.js ----\n// Retry policy for HubSpot calls (flow F4). Ceiling: 100 requests / 10 s, batches of ≤100.\n\nconst MAX_ATTEMPTS = 3;\n\nfunction shouldRetry(status) {\n  return status === 429 || (status >= 500 && status <= 599);\n}\n\nfunction backoffDelayMs(attempt, retryAfterHeader) {\n  const retryAfter = Number(retryAfterHeader);\n  if (retryAfterHeader != null && Number.isFinite(retryAfter) && retryAfter > 0) return retryAfter * 1000;\n  return 1000 * 2 ** (attempt - 1);\n}\n\nfunction chunk(items, size) {\n  const out = [];\n  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));\n  return out;\n}\n\nconst req = $('Prepare').first().json;\nconst res = $input.first().json;\nconst attempt = $runIndex + 1;\nconst status = res.statusCode;\nif (status >= 200 && status < 300) {\n  return [{ json: { ok: true, status, body: res.body, label: req.label } }];\n}\nif (shouldRetry(status) && attempt < MAX_ATTEMPTS) {\n  const headers = res.headers || {};\n  const waitMs = backoffDelayMs(attempt, headers['retry-after']);\n  return [{ json: { retry: true, attempt, status, waitSeconds: waitMs / 1000 } }];\n}\nconst excerpt = JSON.stringify(res.body ?? '').slice(0, 500);\nthrow new Error(`HubSpot ${req.method} ${req.path} [${req.label}] failed after ${attempt} attempt(s): HTTP ${status} ${excerpt}`);"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000008",
+      "name": "Retry?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1680,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Retry?-cond",
+              "leftValue": "={{ $json.retry === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000009",
+      "name": "Back off",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1920,
+        0
+      ],
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": "={{ $json.waitSeconds }}",
+        "unit": "seconds"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000010",
+      "name": "Return",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        0
+      ],
+      "parameters": {
+        "jsCode": "\nreturn $input.all().map((item) => item.json.skip\n  ? { json: { ok: true, skipped: true, status: 0, body: null, label: item.json.label } }\n  : item);"
+      }
+    }
+  ],
+  "connections": {
+    "Request in": {
+      "main": [
+        [
+          {
+            "node": "Prepare",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare": {
+      "main": [
+        [
+          {
+            "node": "Skip?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip?": {
+      "main": [
+        [
+          {
+            "node": "Return",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Has body?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has body?": {
+      "main": [
+        [
+          {
+            "node": "HubSpot API (body)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HubSpot API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HubSpot API (body)": {
+      "main": [
+        [
+          {
+            "node": "Classify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HubSpot API": {
+      "main": [
+        [
+          {
+            "node": "Classify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify": {
+      "main": [
+        [
+          {
+            "node": "Retry?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry?": {
+      "main": [
+        [
+          {
+            "node": "Back off",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Back off": {
+      "main": [
+        [
+          {
+            "node": "Has body?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "tags": []
+}
