@@ -1,0 +1,11 @@
+{
+  "id": 101, "number": "101", "status": "completed", "currency": "USD", "customer_id": 7,
+  "date_created_gmt": "2026-03-04T15:20:00", "total": "148.00",
+  "billing": { "first_name": "Ana", "last_name": "Pérez", "company": "Acme Andina SRL",
+    "email": "ana@acme-andina.test", "phone": "011 4444-5555", "country": "AR" },
+  "line_items": [
+    { "id": 501, "name": "Organic Cotton Tee", "product_id": 11, "quantity": 2, "price": 24, "total": "48.00", "sku": "DEMO-TEE-01" },
+    { "id": 502, "name": "Rain Shell Jacket", "product_id": 19, "quantity": 1, "price": 100, "total": "100.00", "sku": "DEMO-JACK-01" }
+  ],
+  "refunds": []
+}

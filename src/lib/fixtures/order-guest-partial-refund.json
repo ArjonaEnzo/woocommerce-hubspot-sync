@@ -1,0 +1,10 @@
+{
+  "id": 102, "number": "102", "status": "completed", "currency": "USD", "customer_id": 0,
+  "date_created_gmt": "2026-05-10T09:00:00", "total": "89.00",
+  "billing": { "first_name": "Juan", "last_name": "Gómez", "company": "",
+    "email": "juan@gmial.con", "phone": "abc", "country": "Argentina" },
+  "line_items": [
+    { "id": 503, "name": "Everyday Backpack 20 L", "product_id": 18, "quantity": 1, "price": 89, "total": "89.00", "sku": "DEMO-PACK-01" }
+  ],
+  "refunds": [ { "id": 900, "reason": "Damaged strap", "total": "-20.00" } ]
+}
