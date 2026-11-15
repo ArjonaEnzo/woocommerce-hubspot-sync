@@ -22,15 +22,15 @@ test('contact properties match the spec', () => {
 });
 
 test('deal, product and line item properties match the spec', () => {
-  assert.deepEqual(names('deals').sort(), ['last_sync_error_at', 'refund_amount', 'woo_order_id', 'woo_status']);
+  assert.deepEqual(names('deals').sort(), ['refund_amount', 'woo_order_id', 'woo_status']);
   assert.deepEqual(names('products'), ['woo_product_id']);
   assert.deepEqual(names('line_items'), ['woo_line_item_id']);
-  assert.equal(prop('deals', 'last_sync_error_at').type, 'datetime');
+  assert.deepEqual(names('tickets'), ['sync_error_key']);
 });
 
-test('only the three idempotency keys are unique', () => {
+test('only the idempotency keys are unique', () => {
   const unique = Object.entries(PROPERTIES).flatMap(([o, list]) => list.filter((p) => p.hasUniqueValue).map((p) => `${o}.${p.name}`));
-  assert.deepEqual(unique.sort(), ['deals.woo_order_id', 'line_items.woo_line_item_id', 'products.woo_product_id']);
+  assert.deepEqual(unique.sort(), ['deals.woo_order_id', 'line_items.woo_line_item_id', 'products.woo_product_id', 'tickets.sync_error_key']);
 });
 
 test('deal pipeline has the 5 spec stages with internal keys and closed probabilities', () => {

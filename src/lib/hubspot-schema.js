@@ -6,7 +6,6 @@ const base = { groupName: PROPERTY_GROUP.name };
 const text = (name, label, extra = {}) => ({ ...base, name, label, type: 'string', fieldType: 'text', ...extra });
 const number = (name, label) => ({ ...base, name, label, type: 'number', fieldType: 'number' });
 const date = (name, label) => ({ ...base, name, label, type: 'date', fieldType: 'date' });
-const datetime = (name, label) => ({ ...base, name, label, type: 'datetime', fieldType: 'date' });
 const select = (name, label, values) => ({
   ...base, name, label, type: 'enumeration', fieldType: 'select',
   options: values.map(([value, optionLabel], displayOrder) => ({ value, label: optionLabel, displayOrder })),
@@ -28,10 +27,11 @@ export const PROPERTIES = {
     uniqueId('woo_order_id', 'Woo order ID'),
     number('refund_amount', 'Refund amount'),
     text('woo_status', 'Woo order status'),
-    datetime('last_sync_error_at', 'Last sync error at'),
   ],
   products: [uniqueId('woo_product_id', 'Woo product ID')],
   line_items: [uniqueId('woo_line_item_id', 'Woo line item ID')],
+  // One ticket per distinct sync problem, so re-running the backfill never duplicates tickets.
+  tickets: [uniqueId('sync_error_key', 'Sync error key')],
 };
 
 const stage = (key, label, displayOrder, metadata) => ({ key, label, displayOrder, metadata });

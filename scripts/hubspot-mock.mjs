@@ -7,7 +7,7 @@ import { DEAL_PIPELINE, TICKET_PIPELINE } from '../src/lib/hubspot-schema.js';
 
 const UNIQUE_ID_PROPS = {
   contacts: ['email'], companies: [], deals: ['woo_order_id'], products: ['woo_product_id'],
-  line_items: ['woo_line_item_id'], tickets: [],
+  line_items: ['woo_line_item_id'], tickets: ['sync_error_key'],
 };
 
 const pipelineOf = (objectType, def) => ({
