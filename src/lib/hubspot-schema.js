@@ -24,6 +24,9 @@ export const PROPERTIES = {
     select('data_quality_status', 'Data quality status', [['ok', 'OK'], ['needs_review', 'Needs review']]),
     text('data_quality_issues', 'Data quality issues', { type: 'string', fieldType: 'textarea' }),
   ],
+  // Upsert key for companies: one per business email domain, enforced by HubSpot (HubSpot's own `domain`
+  // property is not unique, and companies created through the API are not deduplicated).
+  companies: [uniqueId('woo_company_domain', 'Woo company domain')],
   deals: [
     uniqueId('woo_order_id', 'Woo order ID'),
     number('refund_amount', 'Refund amount'),

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  pipelineContext, contactRequests, companySearchRequest, companyCreateRequest, productSearchRequests,
+  pipelineContext, contactRequests, companyRequests, productSearchRequests,
   productWriteRequests, dealRequests, lineItemSearchRequests, lineItemWriteRequests, idMap, associationRequests,
   ticketReadRequest, ticketCreateRequest, syncProblems,
 } from './sync-plan.js';
@@ -53,18 +53,17 @@ test('contactRequests returns a skip request when no order has a valid email', (
   assert.deepEqual(contactRequests([partial], [partial]), [{ skip: true, label: 'contacts' }]);
 });
 
-test('companySearchRequest searches all business domains in one call', () => {
-  const r = companySearchRequest(orders);
-  assert.equal(r.path, '/crm/v3/objects/companies/search');
-  assert.deepEqual(r.body.filterGroups[0].filters[0], { propertyName: 'domain', operator: 'IN', values: ['acme-andina.test'] });
-  assert.deepEqual(companySearchRequest([partial]), { skip: true, label: 'company search' });
-});
-
-test('companyCreateRequest creates only companies the search did not find', () => {
-  const found = ok([{ id: 'c9', properties: { domain: 'acme-andina.test' } }]);
-  assert.deepEqual(companyCreateRequest(orders, found), { skip: true, label: 'company create' });
-  const r = companyCreateRequest(orders, ok([]));
-  assert.deepEqual(r.body.inputs, [{ properties: { domain: 'acme-andina.test', name: 'Acme Andina SRL' } }]);
+test('companyRequests upserts one company per business domain by the unique woo_company_domain key', () => {
+  // Search-then-create raced against the real API: 40 concurrent webhooks created 4 duplicate companies.
+  // Companies (unlike products) accept unique properties, so HubSpot itself enforces one per domain.
+  const [r] = companyRequests(orders);
+  assert.equal(r.path, '/crm/v3/objects/companies/batch/upsert');
+  assert.equal(r.tolerateClientError, true);
+  assert.deepEqual(r.body.inputs, [{
+    idProperty: 'woo_company_domain', id: 'acme-andina.test',
+    properties: { woo_company_domain: 'acme-andina.test', domain: 'acme-andina.test', name: 'Acme Andina SRL' },
+  }]);
+  assert.deepEqual(companyRequests([partial]), [{ skip: true, label: 'companies' }]);
 });
 
 const many = Array.from({ length: 150 }, (_, i) => ({ ...completed, id: 1000 + i,

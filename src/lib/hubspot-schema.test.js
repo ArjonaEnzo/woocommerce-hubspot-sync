@@ -30,7 +30,7 @@ test('deal, product and line item properties match the spec', () => {
 
 test('unique flags only where HubSpot supports them (not products; line items unconfirmed)', () => {
   const unique = Object.entries(PROPERTIES).flatMap(([o, list]) => list.filter((p) => p.hasUniqueValue).map((p) => `${o}.${p.name}`));
-  assert.deepEqual(unique.sort(), ['deals.woo_order_id', 'tickets.sync_error_key']);
+  assert.deepEqual(unique.sort(), ['companies.woo_company_domain', 'deals.woo_order_id', 'tickets.sync_error_key']);
 });
 
 test('deal pipeline has the 5 spec stages with internal keys and closed probabilities', () => {

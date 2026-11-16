@@ -80,24 +80,15 @@ export function contactRequests(orders, history) {
   return batches('/crm/v3/objects/contacts/batch/upsert', inputs, 'contacts');
 }
 
-export function companySearchRequest(orders) {
-  const domains = planCompanies(orders).map((c) => c.domain);
-  if (!domains.length) return skip('company search');
-  return post('/crm/v3/objects/companies/search', {
-    filterGroups: [{ filters: [{ propertyName: 'domain', operator: 'IN', values: domains }] }],
-    properties: ['domain', 'name'],
-    limit: BATCH,
-  }, 'company search');
-}
-
-export function companyCreateRequest(orders, searchResponse) {
-  const found = idMap([searchResponse], 'domain');
-  const inputs = planCompanies(orders)
-    .filter((c) => !found.has(c.domain))
-    .map((c) => ({ properties: { domain: c.domain, name: c.name } }));
-  return inputs.length
-    ? batches('/crm/v3/objects/companies/batch/create', inputs, 'company create', (i) => i.properties.domain)[0]
-    : skip('company create');
+// One company per business domain, enforced by HubSpot through the unique woo_company_domain property.
+// (A search-then-create version raced: concurrent webhooks for a new domain each created a company.)
+export function companyRequests(orders) {
+  const inputs = planCompanies(orders).map((c) => ({
+    idProperty: 'woo_company_domain',
+    id: c.domain,
+    properties: { woo_company_domain: c.domain, domain: c.domain, name: c.name },
+  }));
+  return batches('/crm/v3/objects/companies/batch/upsert', inputs, 'companies');
 }
 
 export const productSearchRequests = (orders) =>
