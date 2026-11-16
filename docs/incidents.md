@@ -8,3 +8,5 @@ Dated notes written while building. Each: what happened → cause → fix.
 - 2026-11-15 — n8n 2.x refused to run the HubSpot sub-workflow: "Workflow is not active and cannot be executed." Sub-workflows must be published now. → Import script publishes the sub-workflows (`n8n publish:workflow`).
 - 2026-11-15 — POST requests reached HubSpot with an empty body. The HTTP node's "Send Body" was an expression, and n8n drops the parameters that depend on it (JSON body) when it is not a literal `true`. → Two HTTP nodes (with/without body) behind an IF.
 - 2026-11-15 — Port 5678 already taken by another local n8n; the demo's n8n is published on 5679.
+- 2026-11-15 — Woo would not deliver webhooks to `http://n8n:5678` even after allowing the host: `wp_safe_remote_request()` also limits ports to 80/443/8080. → mu-plugin adds 5678 via `http_allowed_safe_ports`.
+- 2026-11-15 — The first error tickets only said "Error executing workflow with item at index 0" (the parent's wrapper message). The HubSpot status was in the error's `description`. → The error workflow now writes both, plus a working link to the failed execution.
