@@ -130,7 +130,10 @@
           "id": "credHubspot00001",
           "name": "HubSpot Service Key"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
     },
     {
       "id": "00000000-0000-4000-8000-000000000031",
@@ -161,7 +164,10 @@
           "id": "credHubspot00001",
           "name": "HubSpot Service Key"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
     },
     {
       "id": "00000000-0000-4000-8000-000000000032",
