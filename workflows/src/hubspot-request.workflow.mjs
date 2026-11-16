@@ -1,6 +1,7 @@
 // F4 core — one HubSpot API request with exponential backoff on 429/5xx (1 s, 2 s; 3 attempts).
-// Input item:  { method, path, body?, label, skip? }
-// Output item: { ok: true, status, body, label, skipped? }  — or the execution fails with a clear message,
+// Input item:  { method, path, body?, label, skip?, tolerateClientError?, ids? }
+// Output item: { ok: true, status, body, label, ids, skipped? }. With tolerateClientError a 4xx answer comes
+// back as { ok: false, status, body, label, ids } (the caller turns it into a ticket). Otherwise it fails with a clear message,
 // which fails the caller and triggers the error workflow (ticket in "Integration errors").
 import { IDS, CREDENTIALS, code, node, subWorkflowTrigger, ifTrue, workflow } from './n8n.mjs';
 
@@ -38,12 +39,15 @@ const res = $input.first().json;
 const attempt = $runIndex + 1;
 const status = res.statusCode;
 if (status >= 200 && status < 300) {
-  return [{ json: { ok: true, status, body: res.body, label: req.label } }];
+  return [{ json: { ok: true, status, body: res.body, label: req.label, ids: req.ids } }];
 }
 if (shouldRetry(status) && attempt < MAX_ATTEMPTS) {
   const headers = res.headers || {};
-  const waitMs = backoffDelayMs(attempt, headers['retry-after']);
+  const waitMs = backoffDelayMs(attempt, headers['retry-after'], status);
   return [{ json: { retry: true, attempt, status, waitSeconds: waitMs / 1000 } }];
+}
+if (req.tolerateClientError && status >= 400 && status < 500 && !shouldRetry(status)) {
+  return [{ json: { ok: false, status, body: res.body, label: req.label, ids: req.ids } }];
 }
 const excerpt = JSON.stringify(res.body ?? '').slice(0, 500);
 throw new Error(\`HubSpot \${req.method} \${req.path} [\${req.label}] failed after \${attempt} attempt(s): HTTP \${status} \${excerpt}\`);`),

@@ -28,8 +28,10 @@ export const PROPERTIES = {
     number('refund_amount', 'Refund amount'),
     text('woo_status', 'Woo order status'),
   ],
-  products: [uniqueId('woo_product_id', 'Woo product ID')],
-  line_items: [uniqueId('woo_line_item_id', 'Woo line item ID')],
+  // HubSpot does not support unique-value properties on products (and does not document them for line
+  // items), so these two are looked up by search and then updated or created — see sync-plan.js.
+  products: [text('woo_product_id', 'Woo product ID')],
+  line_items: [text('woo_line_item_id', 'Woo line item ID')],
   // One ticket per distinct sync problem, so re-running the backfill never duplicates tickets.
   tickets: [uniqueId('sync_error_key', 'Sync error key')],
 };

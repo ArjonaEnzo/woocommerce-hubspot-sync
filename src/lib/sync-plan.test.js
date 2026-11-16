@@ -2,9 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  pipelineContext, contactRequests, companySearchRequest, companyCreateRequest, productRequests,
-  dealRequests, lineItemRequests, idMap, associationRequests, ticketReadRequest, ticketCreateRequest,
-  syncProblems,
+  pipelineContext, contactRequests, companySearchRequest, companyCreateRequest, productSearchRequests,
+  productWriteRequests, dealRequests, lineItemSearchRequests, lineItemWriteRequests, idMap, associationRequests,
+  ticketReadRequest, ticketCreateRequest, syncProblems,
 } from './sync-plan.js';
 
 const fixture = (name) => JSON.parse(readFileSync(new URL(`./fixtures/${name}.json`, import.meta.url)));
@@ -67,15 +67,44 @@ test('companyCreateRequest creates only companies the search did not find', () =
   assert.deepEqual(r.body.inputs, [{ properties: { domain: 'acme-andina.test', name: 'Acme Andina SRL' } }]);
 });
 
-test('productRequests and lineItemRequests chunk at 100 inputs', () => {
-  const many = Array.from({ length: 150 }, (_, i) => ({ ...completed, id: 1000 + i,
-    line_items: [{ id: 5000 + i, name: `P${i}`, product_id: 2000 + i, quantity: 1, price: 1, sku: '' }] }));
-  assert.deepEqual(productRequests(many).map((r) => r.body.inputs.length), [100, 50]);
-  const ids = new Map(many.map((o) => [String(o.line_items[0].product_id), `hs-${o.id}`]));
-  const li = lineItemRequests(many, ids);
-  assert.deepEqual(li.map((r) => r.body.inputs.length), [100, 50]);
-  assert.equal(li[0].body.inputs[0].properties.hs_product_id, 'hs-1000');
-  assert.equal(li[0].body.inputs[0].wooProductId, undefined, 'internal fields are not sent to HubSpot');
+const many = Array.from({ length: 150 }, (_, i) => ({ ...completed, id: 1000 + i,
+  line_items: [{ id: 5000 + i, name: `P${i}`, product_id: 2000 + i, quantity: 1, price: 1, sku: '' }] }));
+
+test('productSearchRequests looks products up by woo_product_id, ≤100 per search', () => {
+  const reqs = productSearchRequests(many);
+  assert.deepEqual(reqs.map((r) => r.body.filterGroups[0].filters[0].values.length), [100, 50]);
+  assert.equal(reqs[0].path, '/crm/v3/objects/products/search');
+  assert.deepEqual(reqs[0].body.filterGroups[0].filters[0].propertyName, 'woo_product_id');
+});
+
+test('productWriteRequests updates found products and creates the rest (products cannot be unique-keyed)', () => {
+  const found = ok([{ id: 'hp1', properties: { woo_product_id: '11' } }]);
+  const reqs = productWriteRequests([completed], [found]);
+  const byPath = Object.fromEntries(reqs.map((r) => [r.path, r.body.inputs]));
+  assert.deepEqual(byPath['/crm/v3/objects/products/batch/update'].map((i) => i.id), ['hp1']);
+  assert.deepEqual(byPath['/crm/v3/objects/products/batch/create'].map((i) => i.properties.woo_product_id), ['19']);
+  for (const r of reqs) assert.equal(r.tolerateClientError, true);
+  assert.deepEqual(productWriteRequests([], [ok([])]), [{ skip: true, label: 'products' }]);
+});
+
+test('lineItemWriteRequests chunks at 100, links products, never sends internal fields', () => {
+  const productIds = new Map(many.map((o) => [String(o.line_items[0].product_id), `hs-${o.id}`]));
+  const searches = lineItemSearchRequests(many);
+  assert.deepEqual(searches.map((r) => r.body.filterGroups[0].filters[0].values.length), [100, 50]);
+  const reqs = lineItemWriteRequests(many, productIds, [ok([{ id: 'li-x', properties: { woo_line_item_id: '5000' } }])]);
+  const update = reqs.find((r) => r.path.endsWith('/batch/update'));
+  const creates = reqs.filter((r) => r.path.endsWith('/batch/create'));
+  assert.deepEqual(update.body.inputs.map((i) => i.id), ['li-x']);
+  assert.deepEqual(creates.map((r) => r.body.inputs.length), [100, 49]);
+  assert.equal(creates[0].body.inputs[0].properties.hs_product_id, 'hs-1001');
+  assert.equal(creates[0].body.inputs[0].wooProductId, undefined);
+  assert.equal(creates[0].body.inputs[0].idProperty, undefined, 'create/update inputs have no idProperty');
+});
+
+test('batch write requests tolerate client errors and carry their record ids', () => {
+  const [req] = contactRequests([completed], [completed]);
+  assert.equal(req.tolerateClientError, true);
+  assert.deepEqual(req.ids, ['ana@acme-andina.test']);
 });
 
 test('dealRequests upserts known statuses and reports unknown ones as problems', () => {
@@ -113,12 +142,29 @@ test('syncProblems reports orders without a valid email and batch errors, with s
   const problems = syncProblems(orders, [batch]);
   assert.deepEqual(problems.map((p) => p.key), ['no-contact:102', 'batch:deals:105']);
   assert.match(problems[0].subject, /#102/);
+});
+
+test('syncProblems turns a rejected batch (400) into one ticket naming its records instead of aborting', () => {
+  const failed = { ok: false, status: 400, label: 'contacts 1', ids: ['a@x.test', 'b@x.test'],
+    body: { category: 'VALIDATION_ERROR', message: 'Property values were not valid: email' } };
+  const [p] = syncProblems([], [failed]);
+  assert.equal(p.key, 'batch-failed:contacts:a@x.test..b@x.test');
+  assert.match(p.content, /HTTP 400/);
+  assert.match(p.content, /Property values were not valid/);
+  assert.match(p.content, /a@x\.test, b@x\.test/);
+});
+
+test('syncProblems explains why an order has no contact', () => {
+  const problems = syncProblems(orders, []);
+  assert.match(problems[0].subject, /#102/);
   assert.match(problems[0].content, /email_typo_domain/);
 });
 
 test('ticketCreateRequest creates tickets only for problems not already open', () => {
   const problems = syncProblems(orders, []);
-  assert.deepEqual(ticketReadRequest(problems).body, { idProperty: 'sync_error_key', inputs: [{ id: 'no-contact:102' }], properties: ['sync_error_key'] });
+  const lookup = ticketReadRequest(problems);
+  assert.equal(lookup.path, '/crm/v3/objects/tickets/search');
+  assert.deepEqual(lookup.body.filterGroups[0].filters[0], { propertyName: 'sync_error_key', operator: 'IN', values: ['no-contact:102'] });
   const existing = ok([{ id: 't9', properties: { sync_error_key: 'no-contact:102' } }]);
   assert.deepEqual(ticketCreateRequest(problems, existing, ctx), { skip: true, label: 'tickets' });
   const r = ticketCreateRequest(problems, ok([]), ctx);

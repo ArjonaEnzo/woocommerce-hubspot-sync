@@ -11,9 +11,43 @@ import {
 const BATCH = 100;
 const skip = (label) => ({ skip: true, label });
 const post = (path, body, label) => ({ method: 'POST', path, body, label });
-const batches = (path, inputs, label) =>
-  (inputs.length ? chunk(inputs, BATCH).map((part, i) => post(path, { inputs: part }, `${label} ${i + 1}`)) : [skip(label)]);
+// Batch writes tolerate 4xx: HubSpot rejects a whole batch for one bad record, and that must become a
+// ticket naming the records, not abort the other 99 orders. `ids` lets the ticket say which records.
+const batches = (path, inputs, label, idOf = (i) => i.id) =>
+  (inputs.length
+    ? chunk(inputs, BATCH).map((part, i) => ({
+      ...post(path, { inputs: part }, `${label} ${i + 1}`), tolerateClientError: true, ids: part.map(idOf).map(String),
+    }))
+    : [skip(label)]);
 const lower = (s) => String(s ?? '').trim().toLowerCase();
+
+/** Searches `objectType` for records whose `property` is any of `values` (≤100 values per search). */
+function searchIn(objectType, property, values, label) {
+  const unique = [...new Set(values.map(String))];
+  if (!unique.length) return [skip(label)];
+  return chunk(unique, BATCH).map((part, i) => post(`/crm/v3/objects/${objectType}/search`, {
+    filterGroups: [{ filters: [{ propertyName: property, operator: 'IN', values: part }] }],
+    properties: [property],
+    limit: BATCH,
+  }, `${label} ${i + 1}`));
+}
+
+/** For objects HubSpot cannot upsert by our key: update what the search found, create the rest. */
+function updateOrCreate(objectType, key, items, found, label) {
+  const updates = [];
+  const creates = [];
+  for (const properties of items) {
+    const id = found.get(lower(properties[key]));
+    if (id) updates.push({ id, properties });
+    else creates.push({ properties });
+  }
+  const idOf = (i) => i.properties[key];
+  const requests = [
+    ...(updates.length ? batches(`/crm/v3/objects/${objectType}/batch/update`, updates, `${label} update`, idOf) : []),
+    ...(creates.length ? batches(`/crm/v3/objects/${objectType}/batch/create`, creates, `${label} create`, idOf) : []),
+  ];
+  return requests.length ? requests : [skip(label)];
+}
 
 export function pipelineContext(dealPipelines, ticketPipelines) {
   const find = (list, def) => {
@@ -61,11 +95,18 @@ export function companyCreateRequest(orders, searchResponse) {
   const inputs = planCompanies(orders)
     .filter((c) => !found.has(c.domain))
     .map((c) => ({ properties: { domain: c.domain, name: c.name } }));
-  return inputs.length ? post('/crm/v3/objects/companies/batch/create', { inputs }, 'company create') : skip('company create');
+  return inputs.length
+    ? batches('/crm/v3/objects/companies/batch/create', inputs, 'company create', (i) => i.properties.domain)[0]
+    : skip('company create');
 }
 
-export const productRequests = (orders) =>
-  batches('/crm/v3/objects/products/batch/upsert', buildProductInputs(orders), 'products');
+export const productSearchRequests = (orders) =>
+  searchIn('products', 'woo_product_id', buildProductInputs(orders).map((p) => p.id), 'product search');
+
+export const productWriteRequests = (orders, searchResponses) => updateOrCreate(
+  'products', 'woo_product_id', buildProductInputs(orders).map((p) => p.properties),
+  idMap(searchResponses, 'woo_product_id'), 'products',
+);
 
 export function dealRequests(orders, ctx) {
   const inputs = [];
@@ -85,12 +126,15 @@ export function dealRequests(orders, ctx) {
   return { requests: batches('/crm/v3/objects/deals/batch/upsert', inputs, 'deals'), problems };
 }
 
-export function lineItemRequests(orders, productIds) {
-  const inputs = orders.flatMap(buildLineItemInputs).map(({ wooProductId, ...input }) => {
+export const lineItemSearchRequests = (orders) =>
+  searchIn('line_items', 'woo_line_item_id', orders.flatMap(buildLineItemInputs).map((li) => li.id), 'line item search');
+
+export function lineItemWriteRequests(orders, productIds, searchResponses) {
+  const items = orders.flatMap(buildLineItemInputs).map(({ wooProductId, properties }) => {
     const hsProductId = productIds.get(wooProductId);
-    return hsProductId ? { ...input, properties: { ...input.properties, hs_product_id: hsProductId } } : input;
+    return hsProductId ? { ...properties, hs_product_id: hsProductId } : properties;
   });
-  return batches('/crm/v3/objects/line_items/batch/upsert', inputs, 'line items');
+  return updateOrCreate('line_items', 'woo_line_item_id', items, idMap(searchResponses, 'woo_line_item_id'), 'line items');
 }
 
 /** value of `property` (lowercased) → HubSpot record id, from any number of batch/search responses. */
@@ -119,7 +163,8 @@ export function associationRequests({ orders, contactIds, companyIds, dealIds, l
     for (const item of order.line_items ?? []) add('line_items/deals', lineItemIds.get(String(item.id)), dealId);
   }
   return Object.entries(pairs).map(([kind, map]) => (map.size
-    ? post(`/crm/v4/associations/${kind}/batch/associate/default`, { inputs: [...map.values()] }, `associate ${kind}`)
+    ? { ...post(`/crm/v4/associations/${kind}/batch/associate/default`, { inputs: [...map.values()] }, `associate ${kind}`),
+      tolerateClientError: true, ids: [...map.keys()] }
     : skip(`associate ${kind}`)));
 }
 
@@ -138,6 +183,18 @@ export function syncProblems(orders, responses, extra = []) {
     }
   }
   for (const r of responses) {
+    if (r && r.ok === false) {
+      const ids = r.ids ?? [];
+      problems.push({
+        key: `batch-failed:${String(r.label).replace(/ \d+$/, '')}:${ids[0] ?? 'none'}..${ids.at(-1) ?? 'none'}`,
+        subject: `HubSpot rejected a whole ${r.label} batch (${ids.length} records)`,
+        content: `HTTP ${r.status} ${r.body?.category ?? ''}: ${r.body?.message ?? JSON.stringify(r.body ?? '')}
+`
+          + `Records: ${ids.join(', ')}`.slice(0, 1800),
+        priority: 'HIGH',
+      });
+      continue;
+    }
     for (const e of r?.body?.errors ?? []) {
       for (const id of e.context?.ids ?? ['unknown']) {
         problems.push({
@@ -154,11 +211,7 @@ export function syncProblems(orders, responses, extra = []) {
 
 export function ticketReadRequest(problems) {
   if (!problems.length) return skip('ticket lookup');
-  return post('/crm/v3/objects/tickets/batch/read', {
-    idProperty: 'sync_error_key',
-    inputs: problems.slice(0, BATCH).map((p) => ({ id: p.key })),
-    properties: ['sync_error_key'],
-  }, 'ticket lookup');
+  return searchIn('tickets', 'sync_error_key', problems.slice(0, BATCH).map((p) => p.key), 'ticket lookup')[0];
 }
 
 export function ticketCreateRequest(problems, readResponse, ctx) {
@@ -175,5 +228,7 @@ export function ticketCreateRequest(problems, readResponse, ctx) {
         hs_ticket_priority: p.priority,
       },
     }));
-  return inputs.length ? post('/crm/v3/objects/tickets/batch/create', { inputs }, 'tickets') : skip('tickets');
+  return inputs.length
+    ? batches('/crm/v3/objects/tickets/batch/create', inputs, 'tickets', (i) => i.properties.sync_error_key)[0]
+    : skip('tickets');
 }

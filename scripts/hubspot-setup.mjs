@@ -70,7 +70,8 @@ for (const [objectType, props] of Object.entries(PROPERTIES)) {
     const existing = await ensure(`${objectType}.${p.name}`, `/crm/v3/properties/${objectType}/${p.name}`,
       `/crm/v3/properties/${objectType}`, p);
     if (p.hasUniqueValue && existing && existing.hasUniqueValue === false) {
-      console.warn(`  WARNING ${objectType}.${p.name} exists but is not unique — upserts by it will fail`);
+      throw new Error(`${objectType}.${p.name} exists but is not unique — upserts by it would fail. `
+        + 'Delete the property in HubSpot (Settings > Properties) and run this script again.');
     }
   }
 }

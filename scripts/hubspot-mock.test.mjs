@@ -42,6 +42,18 @@ test('batch upsert is idempotent by the unique id property', async () => {
   assert.equal((await call('GET', '/__state')).body.counts.deals, 1);
 });
 
+test('like HubSpot, products cannot be upserted by a custom key; batch update edits by record id', async () => {
+  const upsert = await call('POST', '/crm/v3/objects/products/batch/upsert', {
+    inputs: [{ idProperty: 'woo_product_id', id: '11', properties: { name: 'Tee' } }],
+  });
+  assert.equal(upsert.status, 400);
+  const created = await call('POST', '/crm/v3/objects/products/batch/create', { inputs: [{ properties: { woo_product_id: '11', name: 'Tee' } }] });
+  const id = created.body.results[0].id;
+  const updated = await call('POST', '/crm/v3/objects/products/batch/update', { inputs: [{ id, properties: { name: 'Tee v2' } }] });
+  assert.equal(updated.body.results[0].properties.name, 'Tee v2');
+  assert.equal(updated.body.results[0].properties.woo_product_id, '11');
+});
+
 test('batch upsert rejects more than 100 inputs', async () => {
   const inputs = Array.from({ length: 101 }, (_, i) => ({ idProperty: 'email', id: `a${i}@x.test`, properties: {} }));
   assert.equal((await call('POST', '/crm/v3/objects/contacts/batch/upsert', { inputs })).status, 400);
@@ -66,11 +78,11 @@ test('batch read by unique property returns only existing records', async () => 
 
 test('search pages with after and counts everything with no filters', async () => {
   const inputs = Array.from({ length: 3 }, (_, i) => ({ properties: { name: `P${i}` } }));
-  await call('POST', '/crm/v3/objects/products/batch/create', { inputs });
-  const first = await call('POST', '/crm/v3/objects/products/search', { filterGroups: [], limit: 2 });
+  await call('POST', '/crm/v3/objects/line_items/batch/create', { inputs });
+  const first = await call('POST', '/crm/v3/objects/line_items/search', { filterGroups: [], limit: 2 });
   assert.equal(first.body.total, 3);
   assert.equal(first.body.results.length, 2);
-  const second = await call('POST', '/crm/v3/objects/products/search', { filterGroups: [], limit: 2, after: first.body.paging.next.after });
+  const second = await call('POST', '/crm/v3/objects/line_items/search', { filterGroups: [], limit: 2, after: first.body.paging.next.after });
   assert.equal(second.body.results.length, 1);
   assert.equal(second.body.paging, undefined);
 });
@@ -80,6 +92,12 @@ test('default associations are stored once per pair', async () => {
   await call('POST', '/crm/v4/associations/deals/contacts/batch/associate/default', body);
   await call('POST', '/crm/v4/associations/deals/contacts/batch/associate/default', body);
   assert.equal((await call('GET', '/__state')).body.counts.associations, 1);
+});
+
+test('failure injection can target one path only', async () => {
+  await call('POST', '/__fail', { status: 400, times: 1, path: '/contacts/' });
+  assert.equal((await call('GET', '/crm/v3/pipelines/deals')).status, 200);
+  assert.equal((await call('POST', '/crm/v3/objects/contacts/batch/upsert', { inputs: [] })).status, 400);
 });
 
 test('failure injection returns the status N times, then recovers', async () => {

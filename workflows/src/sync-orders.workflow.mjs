@@ -1,7 +1,8 @@
 // Shared core of F1 (backfill) and F2 (real-time): syncs ≤100 Woo orders into HubSpot.
 // Input item: { orders: WooOrder[], history?: WooOrder[] }  (history = every order of those customers,
 // used for total_orders / total_revenue / first & last order date).
-// Order of writes: contacts → companies (search by domain, then create) → products → deals → line items
+// Order of writes: contacts → companies (search by domain, then create) → products (search, then update or
+// create: HubSpot cannot key products by a custom unique property) → deals → line items (same as products)
 // → associations → error tickets. Every HubSpot call goes through the "HubSpot request" sub-workflow.
 import { IDS, code, subWorkflowTrigger, callWorkflow, workflow, chain } from './n8n.mjs';
 
@@ -35,18 +36,23 @@ const out = (requests) => [].concat(requests).map((json) => ({ json }));
     call('Search companies'),
     step('Company create req', "return out(companyCreateRequest(orders, responses('Search companies')[0]));"),
     call('Create companies'),
-    step('Products req', 'return out(productRequests(orders));'),
+    step('Product search req', 'return out(productSearchRequests(orders));'),
+    call('Search products'),
+    step('Products req', "return out(productWriteRequests(orders, responses('Search products')));"),
     call('Upsert products'),
     step('Deals req', 'return out(dealRequests(orders, ctx()).requests);'),
     call('Upsert deals'),
-    step('Line items req', "return out(lineItemRequests(orders, idMap(responses('Upsert products'), 'woo_product_id')));"),
+    step('Line item search req', 'return out(lineItemSearchRequests(orders));'),
+    call('Search line items'),
+    step('Line items req', `const productIds = idMap([...responses('Search products'), ...responses('Upsert products')], 'woo_product_id');
+return out(lineItemWriteRequests(orders, productIds, responses('Search line items')));`),
     call('Upsert line items'),
     step('Associations req', `return out(associationRequests({
   orders,
   contactIds: idMap(responses('Upsert contacts'), 'email'),
   companyIds: idMap([...responses('Search companies'), ...responses('Create companies')], 'domain'),
   dealIds: idMap(responses('Upsert deals'), 'woo_order_id'),
-  lineItemIds: idMap(responses('Upsert line items'), 'woo_line_item_id'),
+  lineItemIds: idMap([...responses('Search line items'), ...responses('Upsert line items')], 'woo_line_item_id'),
 }));`),
     call('Associate'),
     step('Ticket lookup req', `const written = ['Upsert contacts', 'Create companies', 'Upsert products', 'Upsert deals', 'Upsert line items', 'Associate']
@@ -69,8 +75,11 @@ return [{ json: {
   lineItems: count('Upsert line items'),
   associations: count('Associate'),
   ticketsCreated: count('Create tickets'),
-  requests: ['Get pipelines', 'Upsert contacts', 'Search companies', 'Create companies', 'Upsert products', 'Upsert deals',
-    'Upsert line items', 'Associate', 'Find tickets', 'Create tickets'].flatMap(responses).filter((r) => !r.skipped).length,
+  rejectedBatches: ['Upsert contacts', 'Create companies', 'Upsert products', 'Upsert deals', 'Upsert line items', 'Associate']
+    .flatMap(responses).filter((r) => r.ok === false).length,
+  requests: ['Get pipelines', 'Upsert contacts', 'Search companies', 'Create companies', 'Search products', 'Upsert products',
+    'Upsert deals', 'Search line items', 'Upsert line items', 'Associate', 'Find tickets', 'Create tickets']
+    .flatMap(responses).filter((r) => !r.skipped).length,
 } }];`),
   ];
 

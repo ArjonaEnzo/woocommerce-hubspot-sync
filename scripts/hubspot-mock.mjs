@@ -6,8 +6,9 @@ import { createServer } from 'node:http';
 import { DEAL_PIPELINE, TICKET_PIPELINE } from '../src/lib/hubspot-schema.js';
 
 const UNIQUE_ID_PROPS = {
-  contacts: ['email'], companies: [], deals: ['woo_order_id'], products: ['woo_product_id'],
-  line_items: ['woo_line_item_id'], tickets: ['sync_error_key'],
+  // Mirrors HubSpot: products cannot have unique-value properties; line items are not relied on either.
+  contacts: ['email'], companies: [], deals: ['woo_order_id'], products: [],
+  line_items: [], tickets: ['sync_error_key'],
 };
 
 const pipelineOf = (objectType, def) => ({
@@ -20,7 +21,7 @@ export function createMockHubSpot() {
   let nextId = 1000;
   const store = Object.fromEntries(Object.keys(UNIQUE_ID_PROPS).map((t) => [t, new Map()]));
   const associations = new Set();
-  const failures = { status: 0, times: 0 };
+  const failures = { status: 0, times: 0, path: null };
   const requests = [];
   const pipelines = { deals: [pipelineOf('deals', DEAL_PIPELINE)], tickets: [pipelineOf('tickets', TICKET_PIPELINE)] };
 
@@ -57,6 +58,19 @@ export function createMockHubSpot() {
       return [201, { status: 'COMPLETE', results: body.inputs.map((i) => create(m[1], i.properties)) }];
     }],
 
+    ['POST', /^\/crm\/v3\/objects\/(\w+)\/batch\/update$/, (m, body) => {
+      if (!store[m[1]]) return [404, { message: `unknown object ${m[1]}` }];
+      if (!Array.isArray(body?.inputs) || body.inputs.length > 100) return [400, { message: 'inputs must be 1..100' }];
+      const missing = body.inputs.find((i) => !store[m[1]].has(String(i.id)));
+      if (missing) return [400, { message: `record ${missing.id} not found` }];
+      const results = body.inputs.map((i) => {
+        const rec = store[m[1]].get(String(i.id));
+        Object.assign(rec.properties, i.properties);
+        return rec;
+      });
+      return [200, { status: 'COMPLETE', results }];
+    }],
+
     ['POST', /^\/crm\/v3\/objects\/(\w+)\/batch\/read$/, (m, body) => {
       if (!store[m[1]]) return [404, { message: `unknown object ${m[1]}` }];
       const results = (body?.inputs ?? []).map((i) => findBy(m[1], body.idProperty, i.id)).filter(Boolean);
@@ -69,6 +83,7 @@ export function createMockHubSpot() {
         const v = String(r.properties[f.propertyName] ?? '').toLowerCase();
         if (f.operator === 'IN') return f.values.map((x) => String(x).toLowerCase()).includes(v);
         if (f.operator === 'EQ') return v === String(f.value).toLowerCase();
+        if (f.operator === 'HAS_PROPERTY') return v !== '';
         return false;
       }));
       const start = Number(body?.after ?? 0);
@@ -94,6 +109,7 @@ export function createMockHubSpot() {
     ['POST', /^\/__fail$/, (_m, body) => {
       failures.status = body.status;
       failures.times = body.times;
+      failures.path = body.path ?? null; // optional: only requests whose path contains this text fail
       return [200, { ok: true }];
     }],
     ['POST', /^\/__reset$/, () => {
@@ -118,7 +134,7 @@ export function createMockHubSpot() {
     if (!isHelper) {
       requests.push({ method: req.method, path: url.pathname, body: raw.slice(0, 300) });
       if (!/^Bearer \S+/.test(req.headers.authorization ?? '')) return send(401, { message: 'missing bearer token' });
-      if (failures.times > 0) {
+      if (failures.times > 0 && (!failures.path || url.pathname.includes(failures.path))) {
         failures.times--;
         return send(failures.status, { status: 'error', message: `injected ${failures.status}` });
       }
