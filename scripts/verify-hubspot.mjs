@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Compares WooCommerce with HubSpot and prints the numbers quoted in the README and case study.
 // Exit code 1 if there are duplicate deals or Woo orders without a deal.
-// Uses HUBSPOT_BASE_URL (default https://api.hubapi.com; http://localhost:4010 for the mock).
+// Uses VERIFY_HUBSPOT_URL (default https://api.hubapi.com; http://localhost:4010 for the mock).
 import { existsSync } from 'node:fs';
 import { pipelineContext } from '../src/lib/sync-plan.js';
 import { verifyReport } from '../src/lib/verify.js';
@@ -59,6 +59,11 @@ const report = verifyReport({
   companies: await count('companies'),
   needsReview: await count('contacts', [eq('data_quality_status', 'needs_review')]),
   tickets: await count('tickets', [eq('hs_pipeline', ctx.ticketPipelineId)]),
+  keys: {
+    companies: (await search('companies', [{ propertyName: 'domain', operator: 'HAS_PROPERTY' }], ['domain'])).map((c) => c.properties.domain),
+    products: (await search('products', [{ propertyName: 'woo_product_id', operator: 'HAS_PROPERTY' }], ['woo_product_id'])).map((p) => p.properties.woo_product_id),
+    line_items: (await search('line_items', [{ propertyName: 'woo_line_item_id', operator: 'HAS_PROPERTY' }], ['woo_line_item_id'])).map((l) => l.properties.woo_line_item_id),
+  },
 });
 
 console.log(JSON.stringify({ hubspot: base, ...report }, null, 2));

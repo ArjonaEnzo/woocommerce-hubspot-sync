@@ -27,3 +27,12 @@ test('verifyReport flags duplicates and missing orders', () => {
   assert.equal(r.duplicate_woo_order_ids, 1);
   assert.deepEqual(r.problems, ['1 duplicate woo_order_id', 'Woo has 3 orders but HubSpot has 1 distinct deals']);
 });
+
+test('verifyReport flags duplicate companies, products and line items by their keys', () => {
+  const r = verifyReport({
+    wooOrders: 1, deals: [deal(1, 'won', '1')], stageIds, contacts: 1, companies: 2, needsReview: 0, tickets: 0,
+    keys: { companies: ['acme.test', 'ACME.test'], products: ['11', '12'], line_items: ['1', '1', '2'] },
+  });
+  assert.deepEqual(r.duplicates, { companies: 1, products: 0, line_items: 1 });
+  assert.deepEqual(r.problems, ['1 duplicate companies', '1 duplicate line_items']);
+});
