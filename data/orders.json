@@ -28,7 +28,7 @@
   "customer": {
    "first_name": "Tomás",
    "last_name": "Álvarez",
-   "email": "tomas.alvarez@cuyo-design.test",
+   "email": "tomas.alvarez@cuyo-design.example.com",
    "phone": "011 4654-3359",
    "country": "AR",
    "company": "Cuyo Design Studio",
@@ -128,7 +128,7 @@
   "customer": {
    "first_name": "Nicolás",
    "last_name": "Torres",
-   "email": "nicolas.torres@cuyo-design.test",
+   "email": "nicolas.torres@cuyo-design.example.com",
    "phone": "011 4051-5565",
    "country": "AR",
    "company": "Cuyo Design Studio",
@@ -232,7 +232,7 @@
   "customer": {
    "first_name": "Florencia",
    "last_name": "Acosta",
-   "email": "florencia.acosta@andes-outfitters.test",
+   "email": "florencia.acosta@andes-outfitters.example.com",
    "phone": "011 4292-0746",
    "country": "AR",
    "company": "Andes Outfitters SRL",
@@ -516,7 +516,7 @@
   "customer": {
    "first_name": "Agustina",
    "last_name": "Ortiz",
-   "email": "agustina.ortiz@andes-outfitters.test",
+   "email": "agustina.ortiz@andes-outfitters.example.com",
    "phone": "011 4821-1205",
    "country": "AR",
    "company": "Andes Outfitters SRL",
@@ -594,7 +594,7 @@
   "customer": {
    "first_name": "Diego",
    "last_name": "Martínez",
-   "email": "diego.martinez@sur-coffee.test",
+   "email": "diego.martinez@sur-coffee.example.com",
    "phone": "011 4051-5923",
    "country": "AR",
    "company": "",
@@ -740,7 +740,7 @@
   "customer": {
    "first_name": "Juan",
    "last_name": "Fernández",
-   "email": "juan.fernandez@cuyo-design.test",
+   "email": "juan.fernandez@cuyo-design.example.com",
    "phone": "011 4449-8431",
    "country": "AR",
    "company": "Cuyo Design Studio",
@@ -918,7 +918,7 @@
   "customer": {
    "first_name": "Agustina",
    "last_name": "Ortiz",
-   "email": "agustina.ortiz@andes-outfitters.test",
+   "email": "agustina.ortiz@andes-outfitters.example.com",
    "phone": "011 4821-1205",
    "country": "AR",
    "company": "Andes Outfitters SRL",
@@ -1068,7 +1068,7 @@
   "customer": {
    "first_name": "Ana",
    "last_name": "Pérez",
-   "email": "ana.perez@andes-outfitters.test",
+   "email": "ana.perez@andes-outfitters.example.com",
    "phone": "011 4448-8524",
    "country": "AR",
    "company": "",
@@ -1388,7 +1388,7 @@
   "customer": {
    "first_name": "Ana",
    "last_name": "Pérez",
-   "email": "ana.perez@andes-outfitters.test",
+   "email": "ana.perez@andes-outfitters.example.com",
    "phone": "011 4448-8524",
    "country": "AR",
    "company": "",
@@ -1484,7 +1484,7 @@
   "customer": {
    "first_name": "Federico",
    "last_name": "Suárez",
-   "email": "federico.suarez@cuyo-design.test",
+   "email": "federico.suarez@cuyo-design.example.com",
    "phone": "011 4015-3604",
    "country": "AR",
    "company": "",
@@ -1670,7 +1670,7 @@
   "customer": {
    "first_name": "Julieta",
    "last_name": "Ruiz",
-   "email": "julieta.ruiz@litoral-software.test",
+   "email": "julieta.ruiz@litoral-software.example.com",
    "phone": "011 4645-2095",
    "country": "AR",
    "company": "",
@@ -1834,7 +1834,7 @@
   "customer": {
    "first_name": "Joaquín",
    "last_name": "Medina",
-   "email": "joaquin.medina@pampa-digital.test",
+   "email": "joaquin.medina@pampa-digital.example.com",
    "phone": "011 4693-9278",
    "country": "AR",
    "company": "Pampa Digital SA",
@@ -1860,7 +1860,7 @@
   "customer": {
    "first_name": "Tomás",
    "last_name": "Álvarez",
-   "email": "tomas.alvarez@cuyo-design.test",
+   "email": "tomas.alvarez@cuyo-design.example.com",
    "phone": "011 4654-3359",
    "country": "AR",
    "company": "Cuyo Design Studio",
@@ -2096,7 +2096,7 @@
   "customer": {
    "first_name": "Bruno",
    "last_name": "Silva",
-   "email": "bruno.silva@pampa-digital.test",
+   "email": "bruno.silva@pampa-digital.example.com",
    "phone": "011 4916-4339",
    "country": "AR",
    "company": "Pampa Digital SA",
@@ -2122,7 +2122,7 @@
   "customer": {
    "first_name": "Diego",
    "last_name": "Martínez",
-   "email": "diego.martinez@sur-coffee.test",
+   "email": "diego.martinez@sur-coffee.example.com",
    "phone": "011 4051-5923",
    "country": "AR",
    "company": "",
@@ -2182,7 +2182,7 @@
   "customer": {
    "first_name": "Diego",
    "last_name": "Romero",
-   "email": "diego.romero@pampa-digital.test",
+   "email": "diego.romero@pampa-digital.example.com",
    "phone": "011 4129-9727",
    "country": "AR",
    "company": "",
@@ -2312,7 +2312,7 @@
   "customer": {
    "first_name": "Valentina",
    "last_name": "Romero",
-   "email": "valentina.romero@andes-outfitters.test",
+   "email": "valentina.romero@andes-outfitters.example.com",
    "phone": "011 4061-1856",
    "country": "AR",
    "company": "Andes Outfitters SRL",
@@ -2506,7 +2506,7 @@
   "customer": {
    "first_name": "Martín",
    "last_name": "Díaz",
-   "email": "martin.diaz@sur-coffee.test",
+   "email": "martin.diaz@sur-coffee.example.com",
    "phone": "011 4100-6967",
    "country": "AR",
    "company": "Sur Coffee Co",
@@ -2674,7 +2674,7 @@
   "customer": {
    "first_name": "Lucía",
    "last_name": "López",
-   "email": "lucia.lopez@litoral-software.test",
+   "email": "lucia.lopez@litoral-software.example.com",
    "phone": "011 4890-4318",
    "country": "AR",
    "company": "Litoral Software SAS",
@@ -2718,7 +2718,7 @@
   "customer": {
    "first_name": "Sofía",
    "last_name": "Díaz",
-   "email": "sofia.diaz@litoral-software.test",
+   "email": "sofia.diaz@litoral-software.example.com",
    "phone": "011 4610-0038",
    "country": "AR",
    "company": "Litoral Software SAS",
@@ -2740,7 +2740,7 @@
   "customer": {
    "first_name": "Carolina",
    "last_name": "Castro",
-   "email": "carolina.castro@litoral-software.test",
+   "email": "carolina.castro@litoral-software.example.com",
    "phone": "011 4899-0775",
    "country": "AR",
    "company": "Litoral Software SAS",
@@ -2788,7 +2788,7 @@
   "customer": {
    "first_name": "Gonzalo",
    "last_name": "Molina",
-   "email": "gonzalo.molina@sur-coffee.test",
+   "email": "gonzalo.molina@sur-coffee.example.com",
    "phone": "011 4278-7065",
    "country": "AR",
    "company": "Sur Coffee Co",
@@ -2930,7 +2930,7 @@
   "customer": {
    "first_name": "Diego",
    "last_name": "Romero",
-   "email": "diego.romero@pampa-digital.test",
+   "email": "diego.romero@pampa-digital.example.com",
    "phone": "011 4129-9727",
    "country": "AR",
    "company": "",
@@ -3034,7 +3034,7 @@
   "customer": {
    "first_name": "Diego",
    "last_name": "Romero",
-   "email": "diego.romero@pampa-digital.test",
+   "email": "diego.romero@pampa-digital.example.com",
    "phone": "011 4129-9727",
    "country": "AR",
    "company": "",
@@ -3086,7 +3086,7 @@
   "customer": {
    "first_name": "Camila",
    "last_name": "Álvarez",
-   "email": "camila.alvarez@rio-norte.test",
+   "email": "camila.alvarez@rio-norte.example.com",
    "phone": "011 4809-3194",
    "country": "AR",
    "company": "Río Norte Logística",
@@ -3324,7 +3324,7 @@
   "customer": {
    "first_name": "Tomás",
    "last_name": "Sosa",
-   "email": "tomas.sosa@pampa-digital.test",
+   "email": "tomas.sosa@pampa-digital.example.com",
    "phone": "011 4027-1730",
    "country": "AR",
    "company": "Pampa Digital SA",
@@ -3506,7 +3506,7 @@
   "customer": {
    "first_name": "Valentina",
    "last_name": "Sosa",
-   "email": "valentina.sosa@rio-norte.test",
+   "email": "valentina.sosa@rio-norte.example.com",
    "phone": "011 4699-2231",
    "country": "AR",
    "company": "Río Norte Logística",
@@ -3762,7 +3762,7 @@
   "customer": {
    "first_name": "Sofía",
    "last_name": "Díaz",
-   "email": "sofia.diaz@litoral-software.test",
+   "email": "sofia.diaz@litoral-software.example.com",
    "phone": "011 4610-0038",
    "country": "AR",
    "company": "Litoral Software SAS",
@@ -3854,7 +3854,7 @@
   "customer": {
    "first_name": "Martín",
    "last_name": "López",
-   "email": "martin.lopez@cuyo-design.test",
+   "email": "martin.lopez@cuyo-design.example.com",
    "phone": "011 4307-1972",
    "country": "AR",
    "company": "Cuyo Design Studio",
@@ -3906,7 +3906,7 @@
   "customer": {
    "first_name": "Sofía",
    "last_name": "Martínez",
-   "email": "sofia.martinez@andes-outfitters.test",
+   "email": "sofia.martinez@andes-outfitters.example.com",
    "phone": "011 4904-0936",
    "country": "AR",
    "company": "Andes Outfitters SRL",
@@ -4092,7 +4092,7 @@
   "customer": {
    "first_name": "Juan",
    "last_name": "Gómez",
-   "email": "juan.gomez@pampa-digital.test",
+   "email": "juan.gomez@pampa-digital.example.com",
    "phone": "011 4526-2732",
    "country": "AR",
    "company": "Pampa Digital SA",
@@ -4170,7 +4170,7 @@
   "customer": {
    "first_name": "Camila",
    "last_name": "Torres",
-   "email": "camila.torres@litoral-software.test",
+   "email": "camila.torres@litoral-software.example.com",
    "phone": "011 4886-3263",
    "country": "AR",
    "company": "Litoral Software SAS",
@@ -4196,7 +4196,7 @@
   "customer": {
    "first_name": "Florencia",
    "last_name": "Acosta",
-   "email": "florencia.acosta@andes-outfitters.test",
+   "email": "florencia.acosta@andes-outfitters.example.com",
    "phone": "011 4292-0746",
    "country": "AR",
    "company": "Andes Outfitters SRL",
@@ -4322,7 +4322,7 @@
   "customer": {
    "first_name": "Juan",
    "last_name": "Gómez",
-   "email": "juan.gomez@pampa-digital.test",
+   "email": "juan.gomez@pampa-digital.example.com",
    "phone": "011 4526-2732",
    "country": "AR",
    "company": "Pampa Digital SA",
@@ -4374,7 +4374,7 @@
   "customer": {
    "first_name": "Martín",
    "last_name": "López",
-   "email": "martin.lopez@cuyo-design.test",
+   "email": "martin.lopez@cuyo-design.example.com",
    "phone": "011 4307-1972",
    "country": "AR",
    "company": "Cuyo Design Studio",
@@ -4400,7 +4400,7 @@
   "customer": {
    "first_name": "Mateo",
    "last_name": "Benítez",
-   "email": "mateo.benitez@sur-coffee.test",
+   "email": "mateo.benitez@sur-coffee.example.com",
    "phone": "011 4858-5079",
    "country": "AR",
    "company": "Sur Coffee Co",
@@ -4474,7 +4474,7 @@
   "customer": {
    "first_name": "Sofía",
    "last_name": "Díaz",
-   "email": "sofia.diaz@litoral-software.test",
+   "email": "sofia.diaz@litoral-software.example.com",
    "phone": "011 4610-0038",
    "country": "AR",
    "company": "Litoral Software SAS",
@@ -4500,7 +4500,7 @@
   "customer": {
    "first_name": "Ana",
    "last_name": "Gómez",
-   "email": "ana.gomez@rio-norte.test",
+   "email": "ana.gomez@rio-norte.example.com",
    "phone": "011 4596-3229",
    "country": "AR",
    "company": "",
@@ -4552,7 +4552,7 @@
   "customer": {
    "first_name": "Lucía",
    "last_name": "Fernández",
-   "email": "lucia.fernandez@rio-norte.test",
+   "email": "lucia.fernandez@rio-norte.example.com",
    "phone": "011 4472-2499",
    "country": "AR",
    "company": "Río Norte Logística",
@@ -4812,7 +4812,7 @@
   "customer": {
    "first_name": "Nicolás",
    "last_name": "Ruiz",
-   "email": "nicolas.ruiz@sur-coffee.test",
+   "email": "nicolas.ruiz@sur-coffee.example.com",
    "phone": "011 4131-8637",
    "country": "AR",
    "company": "Sur Coffee Co",
@@ -4960,7 +4960,7 @@
   "customer": {
    "first_name": "Paula",
    "last_name": "Herrera",
-   "email": "paula.herrera@rio-norte.test",
+   "email": "paula.herrera@rio-norte.example.com",
    "phone": "011 4431-9422",
    "country": "AR",
    "company": "Río Norte Logística",
@@ -5268,7 +5268,7 @@
   "customer": {
    "first_name": "Valentina",
    "last_name": "Romero",
-   "email": "valentina.romero@andes-outfitters.test",
+   "email": "valentina.romero@andes-outfitters.example.com",
    "phone": "011 4061-1856",
    "country": "AR",
    "company": "Andes Outfitters SRL",
