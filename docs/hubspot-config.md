@@ -7,6 +7,14 @@ written down here precisely enough to rebuild them by hand in a few minutes.
 Portal: a HubSpot **developer test account** (free, 90-day Enterprise trial). Workflows need a
 Professional or Enterprise hub; a Free portal does not have them.
 
+## Before the first sync: one setting
+
+**Settings → Objects → Companies → "Create and associate companies with contacts": OFF.**
+It is on by default. With it on, HubSpot creates a company from every new contact's email domain on its
+own, and the sync's search (which runs seconds later, before HubSpot's search index catches up) does not
+see it → duplicate companies. The sync is meant to be the only writer of companies; `verify-hubspot.mjs`
+reports duplicate companies, products and line items if any appear.
+
 ## W1 — "Woo lifecycle & segments"
 
 - **Type:** deal-based workflow.

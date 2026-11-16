@@ -65,9 +65,9 @@ associations → error tickets. About 10 HubSpot requests per 100 orders, far un
 |---|---|---|
 | Billing customer | Contact | `email` |
 | Billing company / email domain (not gmail, hotmail…) | Company | `domain` (searched first) |
-| Product | Product | `woo_product_id` (unique) |
+| Product | Product | `woo_product_id` (searched first — HubSpot products can't have unique properties) |
 | Order | Deal in pipeline **WooCommerce** | `woo_order_id` (unique) |
-| Order item | Line item (linked to product and deal) | `woo_line_item_id` (unique) |
+| Order item | Line item (linked to product and deal) | `woo_line_item_id` (searched first) |
 | Sync problem | Ticket in pipeline **Integration errors** | `sync_error_key` (unique) |
 
 | Woo status | Deal stage |
@@ -89,7 +89,9 @@ Contact properties written by the sync: `total_orders`, `total_revenue` (paid or
 |---|---|
 | All HubSpot calls via HTTP Request + batch endpoints, not n8n's HubSpot node | The node has no line items, products or associations, and works one record at a time |
 | Totals computed from Woo, not HubSpot rollups | Woo is the source of truth for refunds; rollup support varies by tier |
-| One "HubSpot request" sub-workflow for every call | One place for auth, retries and backoff (honors `Retry-After`) |
+| One "HubSpot request" sub-workflow for every call | One place for auth, retries and backoff (429 waits out the 10 s window, 423 ≥ 2 s, honors `Retry-After`) |
+| A rejected batch (4xx) becomes a ticket, not a crash | HubSpot rejects the whole batch for one bad record; the other objects of the chunk still sync |
+| Real-time flow re-reads the order from Woo | Webhooks can arrive late or out of order; the synced state is always the current one |
 | Bad fields are dropped, never block the sync | A typo in a phone must not hide a $500 order from sales |
 | Orders with an unusable email still sync (deal without contact) + ticket | Revenue stays right; someone gets a task to fix the email |
 | Logic in `src/lib` (plain JS, unit-tested), inlined into Code nodes at build time | What runs in n8n is exactly what the tests cover |
@@ -129,6 +131,10 @@ See [docs/incidents.md](docs/incidents.md) for the full log.
 - Runs against a HubSpot **developer test account**: it expires after 90 days without API calls
   (renewable). Workflows/reports need a Pro/Enterprise hub; the test account's trial provides them.
 - Service Keys do not receive HubSpot webhooks; this sync does not need them (events come from Woo).
+- Companies, products and line items cannot be upserted by a custom key in HubSpot (products cannot have
+  unique properties at all), so the sync searches first and then creates. HubSpot's search index lags a
+  few seconds, so two webhooks for the same new customer arriving together could still create a duplicate;
+  `verify-hubspot.mjs` checks for it instead of assuming it never happens.
 - The backfill holds all orders in memory to compute customer totals — fine for thousands of orders,
   not for millions (that would need a customer-level pass first).
 - Local demo only: n8n exposes the webhook secret to workflows via `$env`, HTTP without TLS.
