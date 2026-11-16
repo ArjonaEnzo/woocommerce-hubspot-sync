@@ -5,10 +5,28 @@ companies, deals and line items, **exactly once**, with refunds reflected, bad d
 retries that never create duplicates. Built with n8n and the HubSpot CRM API; runs locally with one
 `docker compose up`.
 
-> Demo project. All data is generated (seed 42): fictional names, company domains on the reserved
-> `.test` TLD, no real customers. HubSpot side runs in a free developer test account.
+> Demo project. All data is generated (seed 42): fictional names, company domains are subdomains of the
+> IANA-reserved `example.com`, no real customers. HubSpot side runs in a free developer test account.
 
-<!-- Screenshots go here (docs/screenshots): pipeline, contact timeline, dashboard, n8n execution -->
+## Result against a real HubSpot account (2026-11-16)
+
+`node scripts/verify-hubspot.mjs` after the backfill, two real-time bursts and the workflows:
+
+| Check | Result |
+|---|---|
+| Woo orders → HubSpot deals | **217 → 217**, 0 duplicate `woo_order_id` |
+| Duplicate companies / products / line items | **0 / 0 / 0** (re-runs and bursts of concurrent webhooks included) |
+| Contacts · companies | 128 synced contacts (+2 HubSpot sample contacts) · 9 companies, one per business domain |
+| Caught by validation | 9 contacts flagged *Needs review* (bad phone/country) + 9 orders whose email was unusable → tickets |
+| Closed won | 110 deals · **49,629.44 USD** · average order 451.18 USD (same numbers in the HubSpot dashboard) |
+| Workflow W1 | 67 contacts → Customer · New 39 / Repeat 12 / VIP 16 · 0 segments contradicting the synced totals |
+| Workflow W2 | 39 customers with no purchase in 90 days → *At risk* + win-back task |
+
+| Dashboard | Pipeline |
+|---|---|
+| ![WooCommerce Revenue dashboard](docs/screenshots/01-dashboard.jpg) | ![Deals in the WooCommerce pipeline](docs/screenshots/02-pipeline.jpg) |
+| **Contact (VIP, at risk)** | **A sync error, explained** |
+| ![Contact record with company, deals and win-back task](docs/screenshots/03-contact-vip.jpg) | ![Ticket for a batch HubSpot rejected](docs/screenshots/04-error-ticket.jpg) |
 
 ## Why not the official app?
 
@@ -18,7 +36,7 @@ or charges for:
 | Real problem | Native app | This sync |
 |---|---|---|
 | Modern Woo stores use **HPOS** order tables | Paid add-on | Reads orders through the Woo REST API → HPOS-independent |
-| HubSpot does **not dedupe companies created via API** | — | Searches by domain before creating |
+| HubSpot does **not dedupe companies created via API** | — | Upserts companies by a unique `woo_company_domain` |
 | Retries that **duplicate deals** | Not documented | Upserts by unique `woo_order_id` (idempotent) |
 | **Refunds and cancellations** | Not documented | Deal stage and amount follow the refund |
 | **Dirty data** (typo emails, phones, countries) | No | Validation + "Needs review" list + error tickets |
@@ -36,7 +54,7 @@ flowchart LR
     F1[F1 Backfill<br/>REST pages of 100]
     F2[F2 Real time<br/>verify signature]
     S[Sync core<br/>validate → map → batch]
-    R[HubSpot request<br/>retry 429/5xx<br/>1 s · 2 s backoff]
+    R[HubSpot request<br/>retry 429 · 423 · 5xx<br/>and dropped connections]
     F4[F4 Error workflow]
   end
   subgraph HS[HubSpot]
@@ -56,18 +74,18 @@ flowchart LR
 ```
 
 Per batch of ≤100 orders the sync core writes, in order: contacts (upsert by email, with order totals) →
-companies (search by domain, create only the missing ones) → products → deals → line items →
-associations → error tickets. About 10 HubSpot requests per 100 orders, far under the 100 requests / 10 s limit.
+companies (upsert by unique domain key) → products (search, then update or create) → deals (upsert) →
+line items (upsert) → associations → error tickets. About 10 HubSpot requests per 100 orders, far under the 100 requests / 10 s limit.
 
 ## Data mapping
 
 | WooCommerce | HubSpot | Idempotency key |
 |---|---|---|
 | Billing customer | Contact | `email` |
-| Billing company / email domain (not gmail, hotmail…) | Company | `domain` (searched first) |
+| Billing company / email domain (not gmail, hotmail…) | Company | `woo_company_domain` (unique) |
 | Product | Product | `woo_product_id` (searched first — HubSpot products can't have unique properties) |
 | Order | Deal in pipeline **WooCommerce** | `woo_order_id` (unique) |
-| Order item | Line item (linked to product and deal) | `woo_line_item_id` (searched first) |
+| Order item | Line item (linked to product and deal) | `woo_line_item_key` (unique) |
 | Sync problem | Ticket in pipeline **Integration errors** | `sync_error_key` (unique) |
 
 | Woo status | Deal stage |
@@ -118,23 +136,41 @@ No HubSpot account yet? `docker compose --profile mock up -d hubspot-mock` start
 (`scripts/hubspot-mock.mjs`); start n8n with `HUBSPOT_BASE_URL=http://hubspot-mock:4010` and verify with
 `VERIFY_HUBSPOT_URL=http://localhost:4010`. It also injects 429/5xx on demand (`POST /__fail`).
 
-Tests: `npm test` (node:test, ~80 tests: validation, mapping, sync plan, webhook signature, retry policy,
+Tests: `npm test` (node:test, 93 tests: validation, mapping, sync plan, webhook signature, retry policy,
 generator, mock, build).
 
 ## What went wrong (and the fix)
 
-<!-- Filled from docs/incidents.md once the HubSpot run is done -->
-See [docs/incidents.md](docs/incidents.md) for the full log.
+Everything below was found by running the sync, not by reading docs. Full log: [docs/incidents.md](docs/incidents.md).
+
+1. **First real run: 0 of 111 contacts synced.** HubSpot rejects `.test` emails as invalid, and one bad
+   value fails the whole batch of 100. The sync kept going (deals and line items went in) and turned each
+   rejected batch into a ticket that named the records and quoted HubSpot's message — the cause was clear in
+   a minute. Fix: company emails on `example.com` subdomains; the sync now also rejects email shapes HubSpot
+   refuses before sending them.
+2. **HubSpot's own `total_revenue` contact property is read-only.** Writing it would have failed every
+   contact batch. Fix: `woo_total_revenue`, and the setup script now refuses any name HubSpot already owns.
+3. **Duplicates under concurrency.** Search-then-create looked fine in tests, but 43 webhooks at once created
+   4 duplicate companies, and `order.created` + `order.updated` for the same new order duplicated its line
+   items. `verify-hubspot.mjs` caught both. Fix: companies and line items accept unique properties (checked
+   with a throwaway property), so both are now upserted by unique keys and HubSpot enforces "one". Products
+   can't have unique properties, so they keep search-then-write (catalog changes are rare).
+4. **"The connection was aborted"** during that burst: a network error with no HTTP status, so the 429/5xx
+   retry never saw it. Fix: HTTP nodes also retry dropped connections.
+5. **WooCommerce silently dropped webhooks** to the integration: it blocks private hosts *and* ports other
+   than 80/443/8080. Fix: a 20-line must-use plugin allows exactly that host and port.
+6. **Products cannot have unique properties in HubSpot** — caught by an independent code review before the
+   first real run; the planned product upsert would have failed every sync.
 
 ## Limits
 
 - Runs against a HubSpot **developer test account**: it expires after 90 days without API calls
   (renewable). Workflows/reports need a Pro/Enterprise hub; the test account's trial provides them.
 - Service Keys do not receive HubSpot webhooks; this sync does not need them (events come from Woo).
-- Companies, products and line items cannot be upserted by a custom key in HubSpot (products cannot have
-  unique properties at all), so the sync searches first and then creates. HubSpot's search index lags a
-  few seconds, so two webhooks for the same new customer arriving together could still create a duplicate;
-  `verify-hubspot.mjs` checks for it instead of assuming it never happens.
+- Products are the one object HubSpot won't key uniquely, so a product first sold in two simultaneous
+  webhooks could still be created twice (search index lag). `verify-hubspot.mjs` reports it if it happens.
+- Report 5 (top products) is generated by HubSpot's report AI and lists the top 10 alphabetically, not by
+  revenue; sort it in the report editor if you rebuild it.
 - The backfill holds all orders in memory to compute customer totals — fine for thousands of orders,
   not for millions (that would need a customer-level pass first).
 - Local demo only: n8n exposes the webhook secret to workflows via `$env`, HTTP without TLS.
