@@ -41,3 +41,17 @@ test('findSecrets flags tokens and passwords, ignores normal code', () => {
   assert.equal(findSecrets('"abcd EFGH ijkl MNOP qrst UVWX"').length, 1, 'WordPress application password');
   assert.equal(findSecrets(`"${'a1'.repeat(32)}"`).length, 1, '64-hex webhook secret');
 });
+
+test('HubSpot HTTP nodes retry network errors (no HTTP status) on their own', async () => {
+  // Found against the real API: a burst of webhooks got "The connection was aborted". Status codes are
+  // handled by the Classify node (neverError), but a dropped connection throws before Classify runs.
+  const { default: build } = await import('../workflows/src/hubspot-request.workflow.mjs');
+  const wf = build({ inline: inlineModules });
+  const httpNodes = wf.nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest');
+  assert.equal(httpNodes.length, 2);
+  for (const n of httpNodes) {
+    assert.equal(n.retryOnFail, true, n.name);
+    assert.equal(n.maxTries, 3, n.name);
+    assert.ok(n.waitBetweenTries >= 2000, n.name);
+  }
+});

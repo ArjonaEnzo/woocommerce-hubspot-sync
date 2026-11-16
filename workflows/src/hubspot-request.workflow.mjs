@@ -15,7 +15,12 @@ export default function build({ inline }) {
     nodeCredentialType: 'hubspotAppToken',
     ...bodyParams,
     options: { response: { response: { fullResponse: true, neverError: true } }, timeout: 30000 },
-  }, { credentials: CREDENTIALS.hubspot });
+  }, {
+    credentials: CREDENTIALS.hubspot,
+    // HTTP statuses never throw here (neverError → Classify decides). A dropped connection does throw,
+    // so n8n's own retry covers that case: 3 tries, 3 s apart.
+    retryOnFail: true, maxTries: 3, waitBetweenTries: 3000,
+  });
 
   const nodes = [
     subWorkflowTrigger('Request in'),
