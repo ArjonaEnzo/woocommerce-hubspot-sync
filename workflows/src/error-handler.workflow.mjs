@@ -24,6 +24,7 @@ const problem = {
   content: [
     \`Node: \${failure.execution?.lastNodeExecuted ?? '?'}\`,
     \`Error: \${failure.execution?.error?.message ?? 'unknown'}\`,
+    failure.execution?.error?.description ? \`Cause: \${failure.execution.error.description}\` : '',
     failure.execution?.url ? \`Execution: \${failure.execution.url}\` : '',
     'Re-run the workflow after fixing the cause; every write is an upsert, so re-running is safe.',
   ].filter(Boolean).join('\\n').slice(0, 2000),

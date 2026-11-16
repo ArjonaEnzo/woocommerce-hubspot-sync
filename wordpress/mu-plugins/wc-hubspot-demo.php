@@ -17,5 +17,14 @@ add_filter(
 	2
 );
 
+// wp_safe_remote_request() also only allows ports 80, 443 and 8080; n8n listens on 5678.
+add_filter(
+	'http_allowed_safe_ports',
+	static function ( $ports ) {
+		$ports[] = 5678;
+		return $ports;
+	}
+);
+
 // Deliver webhooks immediately instead of via Action Scheduler (no real cron in the demo).
 add_filter( 'woocommerce_webhook_deliver_async', '__return_false' );

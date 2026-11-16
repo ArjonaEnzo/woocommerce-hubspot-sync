@@ -57,6 +57,7 @@ services:
       GENERIC_TIMEZONE: America/Argentina/Buenos_Aires
       TZ: America/Argentina/Buenos_Aires
       N8N_SECURE_COOKIE: "false"
+      N8N_EDITOR_BASE_URL: http://localhost:5679
       NODE_FUNCTION_ALLOW_BUILTIN: crypto
       # Workflows read these via $env (values come from .env through Compose interpolation).
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"

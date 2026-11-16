@@ -1,0 +1,285 @@
+{
+  "id": "wfRealtime000001",
+  "name": "F2 · Woo → HubSpot real time",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "00000000-0000-4000-8000-000000000012",
+      "name": "Woo webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "woo-orders",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "webhookId": "6f1c2a3e-7d1b-4b8e-9a51-a1b2c3d4e5f6"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000013",
+      "name": "Verify",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const { createHmac, timingSafeEqual } = require('crypto');\n\n// ---- src/lib/webhook.js ----\n// WooCommerce webhook signature check (flow F2).\n// Woo sends X-WC-Webhook-Signature = base64(HMAC-SHA256(raw body, secret)).\n\nfunction verifyWooSignature(rawBody, signatureHeader, secret) {\n  if (!secret || typeof signatureHeader !== 'string') return false;\n  const expected = Buffer.from(createHmac('sha256', secret).update(rawBody, 'utf8').digest('base64'));\n  const received = Buffer.from(signatureHeader.trim());\n  return expected.length === received.length && timingSafeEqual(expected, received);\n}\n\nconst item = $input.first();\nconst headers = item.json.headers ?? {};\nconst raw = item.binary?.data\n  ? (await this.helpers.getBinaryDataBuffer(0, 'data')).toString('utf8')\n  : JSON.stringify(item.json.body ?? {});\nconst body = item.json.body ?? {};\n\n// Woo pings the URL once when the webhook is saved (form-encoded webhook_id, no order).\nif (body.webhook_id && !body.id) return [{ json: { action: 'ping' } }];\n\nif (!verifyWooSignature(raw, headers['x-wc-webhook-signature'], $env.WOO_WEBHOOK_SECRET)) {\n  return [{ json: { action: 'reject', reason: 'invalid signature' } }];\n}\nconst order = JSON.parse(raw);\nreturn [{ json: { action: 'sync', topic: headers['x-wc-webhook-topic'], order, email: String(order.billing?.email ?? '').trim().toLowerCase() } }];"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000014",
+      "name": "Rejected?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "Rejected?-cond",
+              "leftValue": "={{ $json.action === 'reject' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000015",
+      "name": "Respond 401",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"error\": \"invalid signature\" } }}",
+        "options": {
+          "responseCode": 401
+        }
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000016",
+      "name": "Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        960,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"received\": $json.action } }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000017",
+      "name": "Only orders",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return $input.all().filter((item) => item.json.action === 'sync');"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000018",
+      "name": "Customer history",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1440,
+        0
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.WOO_BASE_URL }}/wp-json/wc/v3/orders",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "search",
+              "value": "={{ $json.email || 'no-email' }}"
+            },
+            {
+              "name": "per_page",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "credWooBasic0001",
+          "name": "WooCommerce (WP application password)"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000019",
+      "name": "Build sync input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const { order, email } = $('Only orders').first().json;\nconst found = $input.all().map((item) => item.json).filter((o) => o && o.id);\nconst history = found.filter((o) => o.id !== order.id && String(o.billing?.email ?? '').trim().toLowerCase() === email);\nreturn [{ json: { orders: [order], history: [...history, order] } }];"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000020",
+      "name": "Sync order",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1920,
+        0
+      ],
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "wfSyncOrders0001"
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Woo webhook": {
+      "main": [
+        [
+          {
+            "node": "Verify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify": {
+      "main": [
+        [
+          {
+            "node": "Rejected?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rejected?": {
+      "main": [
+        [
+          {
+            "node": "Respond 401",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond 200": {
+      "main": [
+        [
+          {
+            "node": "Only orders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Only orders": {
+      "main": [
+        [
+          {
+            "node": "Customer history",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Customer history": {
+      "main": [
+        [
+          {
+            "node": "Build sync input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build sync input": {
+      "main": [
+        [
+          {
+            "node": "Sync order",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "errorWorkflow": "wfErrorHandler01"
+  },
+  "pinData": {},
+  "tags": []
+}

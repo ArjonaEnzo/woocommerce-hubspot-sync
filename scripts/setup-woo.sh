@@ -40,4 +40,8 @@ if [ -z "${WOO_APP_PASSWORD:-}" ]; then
   echo "Application password written to .env (WOO_APP_PASSWORD)."
 fi
 
+# Signed webhooks order.created / order.updated → n8n (F2). Re-read .env: the secret may be new.
+set -a; . ./.env; set +a
+MSYS_NO_PATHCONV=1 docker compose run --rm -T -e WOO_WEBHOOK_SECRET -e WP_ADMIN_USER wpcli wp eval-file /cli/create-webhooks.php
+
 echo "Done. Store: http://localhost:8080  ·  n8n: http://localhost:5679"
