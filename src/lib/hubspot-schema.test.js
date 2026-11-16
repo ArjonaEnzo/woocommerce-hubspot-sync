@@ -13,9 +13,9 @@ test('every object property lives in the woocommerce group', () => {
 test('contact properties match the spec', () => {
   assert.deepEqual(names('contacts').sort(), [
     'customer_segment', 'data_quality_issues', 'data_quality_status', 'first_order_date', 'last_order_date',
-    'total_orders', 'total_revenue', 'woo_customer_id',
+    'total_orders', 'woo_customer_id', 'woo_total_revenue',
   ]);
-  assert.equal(prop('contacts', 'total_revenue').type, 'number');
+  assert.equal(prop('contacts', 'woo_total_revenue').type, 'number');
   assert.equal(prop('contacts', 'first_order_date').type, 'date');
   assert.deepEqual(prop('contacts', 'customer_segment').options.map((o) => o.value), ['new', 'repeat', 'vip']);
   assert.deepEqual(prop('contacts', 'data_quality_status').options.map((o) => o.value), ['ok', 'needs_review']);
@@ -47,4 +47,12 @@ test('deal pipeline has the 5 spec stages with internal keys and closed probabil
 test('ticket pipeline for integration errors has an open and a closed stage', () => {
   assert.equal(TICKET_PIPELINE.label, 'Integration errors');
   assert.deepEqual(TICKET_PIPELINE.stages.map((s) => [s.key, s.metadata.ticketState]), [['new', 'OPEN'], ['resolved', 'CLOSED']]);
+});
+
+test('no property name collides with a HubSpot default property the sync cannot write', () => {
+  // total_revenue is a read-only HubSpot default on contacts (found against the real API, 2026-11-16).
+  const reserved = { contacts: ['total_revenue', 'email', 'lifecyclestage'], deals: ['amount', 'dealstage'] };
+  for (const [object, names] of Object.entries(reserved)) {
+    for (const name of names) assert.equal(prop(object, name), undefined, `${object}.${name}`);
+  }
 });

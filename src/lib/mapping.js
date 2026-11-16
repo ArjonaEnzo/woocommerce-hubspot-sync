@@ -121,7 +121,7 @@ export function aggregateCustomer(orders) {
   const dates = paid.map((o) => o.date_created_gmt.slice(0, 10)).sort();
   return {
     total_orders: paid.length,
-    total_revenue: Math.round(paid.reduce((s, o) => s + netTotal(o), 0) * 100) / 100,
+    woo_total_revenue: Math.round(paid.reduce((s, o) => s + netTotal(o), 0) * 100) / 100,
     first_order_date: dates[0] ?? null,
     last_order_date: dates.at(-1) ?? null,
   };

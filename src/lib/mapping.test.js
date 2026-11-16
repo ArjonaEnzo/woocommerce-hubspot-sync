@@ -126,12 +126,12 @@ test('aggregateCustomer counts paid orders and nets refunds', () => {
     o(4, 'refunded', '30.00', '30.00', '2026-09-01T10:00:00'),
   ]);
   assert.deepEqual(agg, {
-    total_orders: 2, total_revenue: 130, first_order_date: '2026-01-10', last_order_date: '2026-04-02',
+    total_orders: 2, woo_total_revenue: 130, first_order_date: '2026-01-10', last_order_date: '2026-04-02',
   });
 });
 
 test('aggregateCustomer with no paid orders returns zeros and null dates', () => {
   assert.deepEqual(aggregateCustomer([{ id: 1, status: 'failed', total: '10.00', refunds: [], date_created_gmt: '2026-01-01T00:00:00' }]), {
-    total_orders: 0, total_revenue: 0, first_order_date: null, last_order_date: null,
+    total_orders: 0, woo_total_revenue: 0, first_order_date: null, last_order_date: null,
   });
 });

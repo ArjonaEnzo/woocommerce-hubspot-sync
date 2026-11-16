@@ -44,7 +44,7 @@ test('contactRequests upserts valid emails once each, with aggregates from histo
   assert.equal(input.idProperty, 'email');
   assert.equal(input.id, 'ana@acme-andina.test');
   assert.equal(input.properties.total_orders, 2);
-  assert.equal(input.properties.total_revenue, 198);
+  assert.equal(input.properties.woo_total_revenue, 198);
   assert.equal(input.properties.first_order_date, '2026-03-04');
   assert.equal(input.properties.last_order_date, '2026-07-01');
 });

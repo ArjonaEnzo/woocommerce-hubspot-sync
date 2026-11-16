@@ -16,7 +16,8 @@ export const PROPERTIES = {
   contacts: [
     text('woo_customer_id', 'Woo customer ID'),
     number('total_orders', 'Total orders (paid)'),
-    number('total_revenue', 'Total revenue (net of refunds)'),
+    // Not 'total_revenue': that name is a read-only HubSpot default property on contacts.
+    number('woo_total_revenue', 'Woo total revenue (net of refunds)'),
     date('first_order_date', 'First order date'),
     date('last_order_date', 'Last order date'),
     select('customer_segment', 'Customer segment', [['new', 'New'], ['repeat', 'Repeat'], ['vip', 'VIP']]),

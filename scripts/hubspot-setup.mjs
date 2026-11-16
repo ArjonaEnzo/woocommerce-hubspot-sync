@@ -69,6 +69,10 @@ for (const [objectType, props] of Object.entries(PROPERTIES)) {
   for (const p of props) {
     const existing = await ensure(`${objectType}.${p.name}`, `/crm/v3/properties/${objectType}/${p.name}`,
       `/crm/v3/properties/${objectType}`, p);
+    if (existing?.hubspotDefined) {
+      throw new Error(`${objectType}.${p.name} is a HubSpot default property (group "${existing.groupName}"), `
+        + 'not ours — rename it in src/lib/hubspot-schema.js.');
+    }
     if (p.hasUniqueValue && existing && existing.hasUniqueValue === false) {
       throw new Error(`${objectType}.${p.name} exists but is not unique — upserts by it would fail. `
         + 'Delete the property in HubSpot (Settings > Properties) and run this script again.');

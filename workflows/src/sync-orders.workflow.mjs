@@ -1,6 +1,6 @@
 // Shared core of F1 (backfill) and F2 (real-time): syncs ≤100 Woo orders into HubSpot.
 // Input item: { orders: WooOrder[], history?: WooOrder[] }  (history = every order of those customers,
-// used for total_orders / total_revenue / first & last order date).
+// used for total_orders / woo_total_revenue / first & last order date).
 // Order of writes: contacts → companies (search by domain, then create) → products (search, then update or
 // create: HubSpot cannot key products by a custom unique property) → deals → line items (same as products)
 // → associations → error tickets. Every HubSpot call goes through the "HubSpot request" sub-workflow.
