@@ -19,12 +19,14 @@ reports duplicate companies, products and line items if any appear.
 
 - **Type:** deal-based workflow.
 - **Enrollment trigger:** Deal stage is *Closed won* (pipeline *WooCommerce*).
-- **Re-enrollment:** on, same trigger (a customer can win many deals).
+- **Re-enrollment:** off — the workflow is per deal and a deal is won once; each new won deal enrolls on its own.
+- **Activated** 2026-11-16 with "enroll existing records": 110 Closed won deals → 67 contacts became Customer
+  (New 39 · Repeat 12 · VIP 16); 0 contacts whose segment disagrees with their synced totals (checked by API).
 - **Actions:**
   1. *Edit record* → associated contact → Lifecycle stage = **Customer**.
   2. *If/then branch* on the associated contact:
      - `woo_total_revenue` **is greater than 1000** → set `customer_segment` = **VIP** → *Create task*
-       "Call VIP customer" (assigned to the contact owner, due in 2 business days).
+       "Call VIP customer" (due in 2 business days; unassigned — the demo contacts have no owner).
      - else `total_orders` **is greater than or equal to 2** → set `customer_segment` = **Repeat**.
      - else → set `customer_segment` = **New**.
 
@@ -35,11 +37,16 @@ Why the totals come from the sync and not from a rollup property: refunds. The s
 
 - **Type:** contact-based workflow.
 - **Enrollment trigger:** Lifecycle stage is *Customer* **and** `last_order_date` is more than 90 days ago.
-- **Re-enrollment:** on, when `last_order_date` changes.
+- **Re-enrollment:** on (HubSpot only allows re-enrolling on the lifecycle condition, not on a relative date).
+- **Activated** 2026-11-16 with "enroll existing records": 39 contacts matched.
 - **Actions:**
   1. Add to static list **At risk**.
-  2. *Create task* "Win-back call" for the contact owner.
+  2. *Create task* "Win-back call" (unassigned, see above).
 - No marketing emails are sent (test account; and the demo must not email anyone).
+
+## Segment — "At risk"
+
+- **Type:** static contact segment, filled only by W2.
 
 ## List — "Needs review"
 
