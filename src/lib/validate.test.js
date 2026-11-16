@@ -80,3 +80,9 @@ test('validateCustomer collects every issue of a dirty record', () => {
   assert.ok(r.issues.some((i) => i.startsWith('email_typo_domain')));
   assert.ok(r.issues.includes('country_unknown'));
 });
+
+test('validateEmail rejects dot errors HubSpot would refuse', () => {
+  for (const e of ['a.@x.com', '.a@x.com', 'a..b@x.com', 'x@gmail..com', 'x@.gmail.com']) {
+    assert.equal(validateEmail(e).issue, 'email_invalid_format', e);
+  }
+});

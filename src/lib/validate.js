@@ -34,7 +34,11 @@ const COUNTRY_NAMES = {
 export function validateEmail(raw) {
   const email = String(raw ?? '').trim().toLowerCase();
   if (!EMAIL_RE.test(email)) return { value: null, issue: 'email_invalid_format' };
-  const domain = email.split('@')[1];
+  const [local, domain] = email.split('@');
+  // Dot errors pass the simple pattern but HubSpot rejects them (and one bad email would fail a whole batch).
+  if (/^\.|\.$|\.\./.test(local) || domain.split('.').some((label) => !label)) {
+    return { value: null, issue: 'email_invalid_format' };
+  }
   if (DOMAIN_TYPOS[domain]) return { value: null, issue: `email_typo_domain:${domain}→${DOMAIN_TYPOS[domain]}` };
   if (DISPOSABLE_DOMAINS.has(domain)) return { value: null, issue: 'email_disposable' };
   return { value: email, issue: null };
