@@ -73,7 +73,8 @@ test('about a quarter of customers belong to a company; some companies share a d
   assert.ok(ratio >= 0.18 && ratio <= 0.35, `company ratio ${ratio}`);
   const perDomain = countBy(withDomain, (c) => companyDomain(c.email));
   assert.ok(Object.values(perDomain).some((n) => n >= 3));
-  for (const d of Object.keys(perDomain)) assert.match(d, /\.test$/, 'company domains use the reserved .test TLD');
+  // .test is reserved but HubSpot rejects it (INVALID_EMAIL); subdomains of IANA-reserved example.com pass.
+  for (const d of Object.keys(perDomain)) assert.match(d, /\.example\.com$/, 'company domains are subdomains of example.com');
 });
 
 test('dates span the 12 months before now', () => {

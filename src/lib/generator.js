@@ -1,17 +1,18 @@
 // Seeded fake-order generator. Everything here is fictional: names from short lists,
-// company domains on the reserved .test TLD, personal emails with a "demo." prefix.
+// company domains are subdomains of IANA-reserved example.com (HubSpot rejects .test emails),
+// personal emails carry a "demo." prefix.
 
 const FIRST = ['Ana', 'Juan', 'Lucía', 'Martín', 'Sofía', 'Diego', 'Valentina', 'Tomás', 'Camila', 'Nicolás',
   'Julieta', 'Mateo', 'Florencia', 'Joaquín', 'Paula', 'Federico', 'Carolina', 'Gonzalo', 'Agustina', 'Bruno'];
 const LAST = ['Pérez', 'Gómez', 'Fernández', 'López', 'Díaz', 'Martínez', 'Romero', 'Sosa', 'Álvarez', 'Torres',
   'Ruiz', 'Benítez', 'Acosta', 'Medina', 'Herrera', 'Suárez', 'Castro', 'Molina', 'Ortiz', 'Silva'];
 const COMPANIES = [
-  { name: 'Andes Outfitters SRL', domain: 'andes-outfitters.test' },
-  { name: 'Pampa Digital SA', domain: 'pampa-digital.test' },
-  { name: 'Río Norte Logística', domain: 'rio-norte.test' },
-  { name: 'Cuyo Design Studio', domain: 'cuyo-design.test' },
-  { name: 'Litoral Software SAS', domain: 'litoral-software.test' },
-  { name: 'Sur Coffee Co', domain: 'sur-coffee.test' },
+  { name: 'Andes Outfitters SRL', domain: 'andes-outfitters.example.com' },
+  { name: 'Pampa Digital SA', domain: 'pampa-digital.example.com' },
+  { name: 'Río Norte Logística', domain: 'rio-norte.example.com' },
+  { name: 'Cuyo Design Studio', domain: 'cuyo-design.example.com' },
+  { name: 'Litoral Software SAS', domain: 'litoral-software.example.com' },
+  { name: 'Sur Coffee Co', domain: 'sur-coffee.example.com' },
 ];
 const FREE_DOMAINS = ['gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com'];
 const COUNTRIES = ['AR', 'AR', 'AR', 'AR', 'US', 'MX', 'ES', 'CL', 'UY', 'BR', 'CO'];
