@@ -5,7 +5,7 @@
   "isArchived": false,
   "nodes": [
     {
-      "id": "00000000-0000-4000-8000-000000000022",
+      "id": "00000000-0000-4000-8000-000000000026",
       "name": "Request in",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
@@ -18,7 +18,7 @@
       }
     },
     {
-      "id": "00000000-0000-4000-8000-000000000023",
+      "id": "00000000-0000-4000-8000-000000000027",
       "name": "Prepare",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -31,7 +31,7 @@
       }
     },
     {
-      "id": "00000000-0000-4000-8000-000000000024",
+      "id": "00000000-0000-4000-8000-000000000028",
       "name": "Skip?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -65,7 +65,7 @@
       }
     },
     {
-      "id": "00000000-0000-4000-8000-000000000025",
+      "id": "00000000-0000-4000-8000-000000000029",
       "name": "Has body?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -99,7 +99,7 @@
       }
     },
     {
-      "id": "00000000-0000-4000-8000-000000000026",
+      "id": "00000000-0000-4000-8000-000000000030",
       "name": "HubSpot API (body)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -133,7 +133,7 @@
       }
     },
     {
-      "id": "00000000-0000-4000-8000-000000000027",
+      "id": "00000000-0000-4000-8000-000000000031",
       "name": "HubSpot API",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -164,7 +164,7 @@
       }
     },
     {
-      "id": "00000000-0000-4000-8000-000000000028",
+      "id": "00000000-0000-4000-8000-000000000032",
       "name": "Classify",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -173,11 +173,11 @@
         0
       ],
       "parameters": {
-        "jsCode": "// ---- src/lib/retry.js ----\n// Retry policy for HubSpot calls (flow F4). Ceiling: 100 requests / 10 s, batches of ≤100.\n\nconst MAX_ATTEMPTS = 3;\n\nfunction shouldRetry(status) {\n  return status === 429 || (status >= 500 && status <= 599);\n}\n\nfunction backoffDelayMs(attempt, retryAfterHeader) {\n  const retryAfter = Number(retryAfterHeader);\n  if (retryAfterHeader != null && Number.isFinite(retryAfter) && retryAfter > 0) return retryAfter * 1000;\n  return 1000 * 2 ** (attempt - 1);\n}\n\nfunction chunk(items, size) {\n  const out = [];\n  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));\n  return out;\n}\n\nconst req = $('Prepare').first().json;\nconst res = $input.first().json;\nconst attempt = $runIndex + 1;\nconst status = res.statusCode;\nif (status >= 200 && status < 300) {\n  return [{ json: { ok: true, status, body: res.body, label: req.label } }];\n}\nif (shouldRetry(status) && attempt < MAX_ATTEMPTS) {\n  const headers = res.headers || {};\n  const waitMs = backoffDelayMs(attempt, headers['retry-after']);\n  return [{ json: { retry: true, attempt, status, waitSeconds: waitMs / 1000 } }];\n}\nconst excerpt = JSON.stringify(res.body ?? '').slice(0, 500);\nthrow new Error(`HubSpot ${req.method} ${req.path} [${req.label}] failed after ${attempt} attempt(s): HTTP ${status} ${excerpt}`);"
+        "jsCode": "// ---- src/lib/retry.js ----\n// Retry policy for HubSpot calls (flow F4). Ceiling: 100 requests / 10 s, batches of ≤100.\n\nconst MAX_ATTEMPTS = 3;\n\n// 429 = rate limit, 423 = HubSpot's \"Locked\" during high sync volume, 5xx = transient server errors.\nfunction shouldRetry(status) {\n  return status === 429 || status === 423 || (status >= 500 && status <= 599);\n}\n\n// Exponential (1 s, 2 s, 4 s…), but never shorter than what the error needs: a 429 without Retry-After\n// waits out the whole 10 s rate window; a 423 waits at least 2 s (HubSpot's guidance).\nfunction backoffDelayMs(attempt, retryAfterHeader, status) {\n  const retryAfter = Number(retryAfterHeader);\n  if (retryAfterHeader != null && Number.isFinite(retryAfter) && retryAfter > 0) return retryAfter * 1000;\n  const exponential = 1000 * 2 ** (attempt - 1);\n  if (status === 429) return Math.max(exponential, 10000);\n  if (status === 423) return Math.max(exponential, 2000);\n  return exponential;\n}\n\nfunction chunk(items, size) {\n  const out = [];\n  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));\n  return out;\n}\n\nconst req = $('Prepare').first().json;\nconst res = $input.first().json;\nconst attempt = $runIndex + 1;\nconst status = res.statusCode;\nif (status >= 200 && status < 300) {\n  return [{ json: { ok: true, status, body: res.body, label: req.label, ids: req.ids } }];\n}\nif (shouldRetry(status) && attempt < MAX_ATTEMPTS) {\n  const headers = res.headers || {};\n  const waitMs = backoffDelayMs(attempt, headers['retry-after'], status);\n  return [{ json: { retry: true, attempt, status, waitSeconds: waitMs / 1000 } }];\n}\nif (req.tolerateClientError && status >= 400 && status < 500 && !shouldRetry(status)) {\n  return [{ json: { ok: false, status, body: res.body, label: req.label, ids: req.ids } }];\n}\nconst excerpt = JSON.stringify(res.body ?? '').slice(0, 500);\nthrow new Error(`HubSpot ${req.method} ${req.path} [${req.label}] failed after ${attempt} attempt(s): HTTP ${status} ${excerpt}`);"
       }
     },
     {
-      "id": "00000000-0000-4000-8000-000000000029",
+      "id": "00000000-0000-4000-8000-000000000033",
       "name": "Retry?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -211,7 +211,7 @@
       }
     },
     {
-      "id": "00000000-0000-4000-8000-000000000030",
+      "id": "00000000-0000-4000-8000-000000000034",
       "name": "Back off",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
@@ -226,7 +226,7 @@
       }
     },
     {
-      "id": "00000000-0000-4000-8000-000000000031",
+      "id": "00000000-0000-4000-8000-000000000035",
       "name": "Return",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
