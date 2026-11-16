@@ -1,12 +1,22 @@
 // F1 — historical backfill. Reads every order through the Woo REST API (so it works with HPOS),
 // then syncs them in chunks of 100. Every write is an upsert, so re-running it is safe; to resume after
-// a failure, set startChunk in "Config" to the chunk that failed (the Summary of each run lists them).
+// a failure, start again from the chunk that failed (startChunk; the Summary of each run lists them).
+// Two triggers: the n8n editor (manual) or POST /webhook/woo-backfill with header x-backfill-token
+// (= WOO_WEBHOOK_SECRET) and an optional JSON body {"startChunk": N}.
 import { IDS, CREDENTIALS, node, code, callWorkflow, workflow, chain } from './n8n.mjs';
 
 export default function build() {
   const nodes = [
     node('Start', 'n8n-nodes-base.manualTrigger', 1),
-    code('Config', 'return [{ json: { startChunk: 0, chunkSize: 100 } }];'),
+    node('Run via webhook', 'n8n-nodes-base.webhook', 2, {
+      httpMethod: 'POST', path: 'woo-backfill', responseMode: 'onReceived', options: {},
+    }, { webhookId: '0b7f3c1d-2e4a-4f6b-8c9d-0a1b2c3d4e5f' }),
+    code('Config', `const trigger = $input.first().json;
+if (trigger.headers) {
+  const token = trigger.headers['x-backfill-token'];
+  if (!$env.WOO_WEBHOOK_SECRET || token !== $env.WOO_WEBHOOK_SECRET) throw new Error('Backfill webhook: missing or wrong x-backfill-token');
+}
+return [{ json: { startChunk: Number(trigger.body?.startChunk ?? 0), chunkSize: 100 } }];`),
     node('Fetch Woo orders', 'n8n-nodes-base.httpRequest', 4.2, {
       method: 'GET',
       url: '={{ $env.WOO_BASE_URL }}/wp-json/wc/v3/orders',
@@ -50,7 +60,7 @@ return [{ json: { chunks: runs.length, orders: total('orders'), deals: total('de
     id: IDS.backfill,
     name: 'F1 · Woo → HubSpot backfill',
     nodes,
-    links: chain(nodes.map((n) => n.name)),
+    links: [['Start', 'Config'], ['Run via webhook', 'Config'], ...chain(nodes.slice(2).map((n) => n.name))],
     settings: { errorWorkflow: IDS.errorHandler },
   });
 }

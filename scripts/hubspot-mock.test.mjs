@@ -64,6 +64,17 @@ test('batch read by unique property returns only existing records', async () => 
   assert.deepEqual(r.body.results.map((t) => t.properties.sync_error_key), ['k1']);
 });
 
+test('search pages with after and counts everything with no filters', async () => {
+  const inputs = Array.from({ length: 3 }, (_, i) => ({ properties: { name: `P${i}` } }));
+  await call('POST', '/crm/v3/objects/products/batch/create', { inputs });
+  const first = await call('POST', '/crm/v3/objects/products/search', { filterGroups: [], limit: 2 });
+  assert.equal(first.body.total, 3);
+  assert.equal(first.body.results.length, 2);
+  const second = await call('POST', '/crm/v3/objects/products/search', { filterGroups: [], limit: 2, after: first.body.paging.next.after });
+  assert.equal(second.body.results.length, 1);
+  assert.equal(second.body.paging, undefined);
+});
+
 test('default associations are stored once per pair', async () => {
   const body = { inputs: [{ from: { id: '1' }, to: { id: '2' } }] };
   await call('POST', '/crm/v4/associations/deals/contacts/batch/associate/default', body);

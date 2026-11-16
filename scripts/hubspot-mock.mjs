@@ -71,7 +71,11 @@ export function createMockHubSpot() {
         if (f.operator === 'EQ') return v === String(f.value).toLowerCase();
         return false;
       }));
-      return [200, { total: results.length, results: results.slice(0, body?.limit ?? 10) }];
+      const start = Number(body?.after ?? 0);
+      const end = start + (body?.limit ?? 10);
+      const page = { total: results.length, results: results.slice(start, end) };
+      if (end < results.length) page.paging = { next: { after: String(end) } };
+      return [200, page];
     }],
 
     ['POST', /^\/crm\/v4\/associations\/(\w+)\/(\w+)\/batch\/associate\/default$/, (m, body) => {
