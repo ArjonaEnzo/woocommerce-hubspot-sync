@@ -2,14 +2,20 @@
 
 export const MAX_ATTEMPTS = 3;
 
+// 429 = rate limit, 423 = HubSpot's "Locked" during high sync volume, 5xx = transient server errors.
 export function shouldRetry(status) {
-  return status === 429 || (status >= 500 && status <= 599);
+  return status === 429 || status === 423 || (status >= 500 && status <= 599);
 }
 
-export function backoffDelayMs(attempt, retryAfterHeader) {
+// Exponential (1 s, 2 s, 4 s…), but never shorter than what the error needs: a 429 without Retry-After
+// waits out the whole 10 s rate window; a 423 waits at least 2 s (HubSpot's guidance).
+export function backoffDelayMs(attempt, retryAfterHeader, status) {
   const retryAfter = Number(retryAfterHeader);
   if (retryAfterHeader != null && Number.isFinite(retryAfter) && retryAfter > 0) return retryAfter * 1000;
-  return 1000 * 2 ** (attempt - 1);
+  const exponential = 1000 * 2 ** (attempt - 1);
+  if (status === 429) return Math.max(exponential, 10000);
+  if (status === 423) return Math.max(exponential, 2000);
+  return exponential;
 }
 
 export function chunk(items, size) {
