@@ -117,15 +117,14 @@ export function dealRequests(orders, ctx) {
   return { requests: batches('/crm/v3/objects/deals/batch/upsert', inputs, 'deals'), problems };
 }
 
-export const lineItemSearchRequests = (orders) =>
-  searchIn('line_items', 'woo_line_item_id', orders.flatMap(buildLineItemInputs).map((li) => li.id), 'line item search');
-
-export function lineItemWriteRequests(orders, productIds, searchResponses) {
-  const items = orders.flatMap(buildLineItemInputs).map(({ wooProductId, properties }) => {
+// Upsert by the unique woo_line_item_key: one line item per Woo order item even when order.created and
+// order.updated webhooks are processed at the same time (search-then-create duplicated them).
+export function lineItemRequests(orders, productIds) {
+  const inputs = orders.flatMap(buildLineItemInputs).map(({ wooProductId, ...input }) => {
     const hsProductId = productIds.get(wooProductId);
-    return hsProductId ? { ...properties, hs_product_id: hsProductId } : properties;
+    return hsProductId ? { ...input, properties: { ...input.properties, hs_product_id: hsProductId } } : input;
   });
-  return updateOrCreate('line_items', 'woo_line_item_id', items, idMap(searchResponses, 'woo_line_item_id'), 'line items');
+  return batches('/crm/v3/objects/line_items/batch/upsert', inputs, 'line items');
 }
 
 /** value of `property` (lowercased) → HubSpot record id, from any number of batch/search responses. */

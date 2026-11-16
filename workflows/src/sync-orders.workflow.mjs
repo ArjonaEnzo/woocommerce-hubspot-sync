@@ -2,7 +2,7 @@
 // Input item: { orders: WooOrder[], history?: WooOrder[] }  (history = every order of those customers,
 // used for total_orders / woo_total_revenue / first & last order date).
 // Order of writes: contacts → companies (upsert by unique woo_company_domain) → products (search, then update or
-// create: HubSpot cannot key products by a custom unique property) → deals → line items (same as products)
+// create: HubSpot cannot key products by a custom unique property) → deals → line items (upsert by unique woo_line_item_key)
 // → associations → error tickets. Every HubSpot call goes through the "HubSpot request" sub-workflow.
 import { IDS, code, subWorkflowTrigger, callWorkflow, workflow, chain } from './n8n.mjs';
 
@@ -40,17 +40,15 @@ const out = (requests) => [].concat(requests).map((json) => ({ json }));
     call('Upsert products'),
     step('Deals req', 'return out(dealRequests(orders, ctx()).requests);'),
     call('Upsert deals'),
-    step('Line item search req', 'return out(lineItemSearchRequests(orders));'),
-    call('Search line items'),
     step('Line items req', `const productIds = idMap([...responses('Search products'), ...responses('Upsert products')], 'woo_product_id');
-return out(lineItemWriteRequests(orders, productIds, responses('Search line items')));`),
+return out(lineItemRequests(orders, productIds));`),
     call('Upsert line items'),
     step('Associations req', `return out(associationRequests({
   orders,
   contactIds: idMap(responses('Upsert contacts'), 'email'),
   companyIds: idMap(responses('Upsert companies'), 'woo_company_domain'),
   dealIds: idMap(responses('Upsert deals'), 'woo_order_id'),
-  lineItemIds: idMap([...responses('Search line items'), ...responses('Upsert line items')], 'woo_line_item_id'),
+  lineItemIds: idMap(responses('Upsert line items'), 'woo_line_item_key'),
 }));`),
     call('Associate'),
     step('Ticket lookup req', `const written = ['Upsert contacts', 'Upsert companies', 'Upsert products', 'Upsert deals', 'Upsert line items', 'Associate']
@@ -76,7 +74,7 @@ return [{ json: {
   rejectedBatches: ['Upsert contacts', 'Upsert companies', 'Upsert products', 'Upsert deals', 'Upsert line items', 'Associate']
     .flatMap(responses).filter((r) => r.ok === false).length,
   requests: ['Get pipelines', 'Upsert contacts', 'Upsert companies', 'Search products', 'Upsert products',
-    'Upsert deals', 'Search line items', 'Upsert line items', 'Associate', 'Find tickets', 'Create tickets']
+    'Upsert deals', 'Upsert line items', 'Associate', 'Find tickets', 'Create tickets']
     .flatMap(responses).filter((r) => !r.skipped).length,
 } }];`),
   ];

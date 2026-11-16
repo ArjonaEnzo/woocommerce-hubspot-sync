@@ -62,7 +62,7 @@ const report = verifyReport({
   keys: {
     companies: (await search('companies', [{ propertyName: 'domain', operator: 'HAS_PROPERTY' }], ['domain'])).map((c) => c.properties.domain),
     products: (await search('products', [{ propertyName: 'woo_product_id', operator: 'HAS_PROPERTY' }], ['woo_product_id'])).map((p) => p.properties.woo_product_id),
-    line_items: (await search('line_items', [{ propertyName: 'woo_line_item_id', operator: 'HAS_PROPERTY' }], ['woo_line_item_id'])).map((l) => l.properties.woo_line_item_id),
+    line_items: (await search('line_items', [{ propertyName: 'woo_line_item_key', operator: 'HAS_PROPERTY' }], ['woo_line_item_key'])).map((l) => l.properties.woo_line_item_key),
   },
 });
 

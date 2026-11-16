@@ -8,7 +8,7 @@ import { DEAL_PIPELINE, TICKET_PIPELINE } from '../src/lib/hubspot-schema.js';
 const UNIQUE_ID_PROPS = {
   // Mirrors HubSpot: products cannot have unique-value properties; line items are not relied on either.
   contacts: ['email'], companies: ['woo_company_domain'], deals: ['woo_order_id'], products: [],
-  line_items: [], tickets: ['sync_error_key'],
+  line_items: ['woo_line_item_key'], tickets: ['sync_error_key'],
 };
 
 const pipelineOf = (objectType, def) => ({

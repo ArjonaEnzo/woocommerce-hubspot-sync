@@ -110,8 +110,8 @@ test('buildLineItemInputs returns one stable upsert input per order item', () =>
   const li = buildLineItemInputs(completed);
   assert.equal(li.length, 2);
   assert.deepEqual(li[0], {
-    idProperty: 'woo_line_item_id', id: '501', wooProductId: '11',
-    properties: { woo_line_item_id: '501', name: 'Organic Cotton Tee', quantity: '2', price: '24.00', hs_sku: 'DEMO-TEE-01' },
+    idProperty: 'woo_line_item_key', id: '501', wooProductId: '11',
+    properties: { woo_line_item_key: '501', name: 'Organic Cotton Tee', quantity: '2', price: '24.00', hs_sku: 'DEMO-TEE-01' },
   });
 });
 

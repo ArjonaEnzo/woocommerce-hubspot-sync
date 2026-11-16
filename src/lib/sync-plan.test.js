@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   pipelineContext, contactRequests, companyRequests, productSearchRequests,
-  productWriteRequests, dealRequests, lineItemSearchRequests, lineItemWriteRequests, idMap, associationRequests,
+  productWriteRequests, dealRequests, lineItemRequests, idMap, associationRequests,
   ticketReadRequest, ticketCreateRequest, syncProblems,
 } from './sync-plan.js';
 
@@ -86,18 +86,19 @@ test('productWriteRequests updates found products and creates the rest (products
   assert.deepEqual(productWriteRequests([], [ok([])]), [{ skip: true, label: 'products' }]);
 });
 
-test('lineItemWriteRequests chunks at 100, links products, never sends internal fields', () => {
+test('lineItemRequests upserts by the unique woo_line_item_key, chunked at 100, linked to products', () => {
+  // Search-then-create duplicated line items against the real API when order.created and order.updated
+  // arrived together; line items do accept unique properties (verified 2026-11-16), so upsert instead.
   const productIds = new Map(many.map((o) => [String(o.line_items[0].product_id), `hs-${o.id}`]));
-  const searches = lineItemSearchRequests(many);
-  assert.deepEqual(searches.map((r) => r.body.filterGroups[0].filters[0].values.length), [100, 50]);
-  const reqs = lineItemWriteRequests(many, productIds, [ok([{ id: 'li-x', properties: { woo_line_item_id: '5000' } }])]);
-  const update = reqs.find((r) => r.path.endsWith('/batch/update'));
-  const creates = reqs.filter((r) => r.path.endsWith('/batch/create'));
-  assert.deepEqual(update.body.inputs.map((i) => i.id), ['li-x']);
-  assert.deepEqual(creates.map((r) => r.body.inputs.length), [100, 49]);
-  assert.equal(creates[0].body.inputs[0].properties.hs_product_id, 'hs-1001');
-  assert.equal(creates[0].body.inputs[0].wooProductId, undefined);
-  assert.equal(creates[0].body.inputs[0].idProperty, undefined, 'create/update inputs have no idProperty');
+  const reqs = lineItemRequests(many, productIds);
+  assert.deepEqual(reqs.map((r) => r.path), Array(2).fill('/crm/v3/objects/line_items/batch/upsert'));
+  assert.deepEqual(reqs.map((r) => r.body.inputs.length), [100, 50]);
+  const first = reqs[0].body.inputs[0];
+  assert.equal(first.idProperty, 'woo_line_item_key');
+  assert.equal(first.id, '5000');
+  assert.equal(first.properties.hs_product_id, 'hs-1000');
+  assert.equal(first.wooProductId, undefined, 'internal fields are not sent to HubSpot');
+  assert.equal(reqs[0].tolerateClientError, true);
 });
 
 test('batch write requests tolerate client errors and carry their record ids', () => {

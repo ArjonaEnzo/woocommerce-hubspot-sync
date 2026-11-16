@@ -102,11 +102,11 @@ export function buildLineItemInputs(order) {
   return (order.line_items ?? []).map((item) => {
     const id = String(item.id);
     return {
-      idProperty: 'woo_line_item_id',
+      idProperty: 'woo_line_item_key',
       id,
       wooProductId: String(item.product_id),
       properties: {
-        woo_line_item_id: id,
+        woo_line_item_key: id,
         name: item.name,
         quantity: String(item.quantity),
         price: money(Number(item.price)),
