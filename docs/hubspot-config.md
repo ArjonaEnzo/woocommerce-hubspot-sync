@@ -23,13 +23,13 @@ reports duplicate companies, products and line items if any appear.
 - **Actions:**
   1. *Edit record* → associated contact → Lifecycle stage = **Customer**.
   2. *If/then branch* on the associated contact:
-     - `total_revenue` **is greater than 1000** → set `customer_segment` = **VIP** → *Create task*
+     - `woo_total_revenue` **is greater than 1000** → set `customer_segment` = **VIP** → *Create task*
        "Call VIP customer" (assigned to the contact owner, due in 2 business days).
      - else `total_orders` **is greater than or equal to 2** → set `customer_segment` = **Repeat**.
      - else → set `customer_segment` = **New**.
 
 Why the totals come from the sync and not from a rollup property: refunds. The sync computes
-`total_revenue` from WooCommerce net of refunds, which is the number the business trusts.
+`woo_total_revenue` from WooCommerce net of refunds, which is the number the business trusts.
 
 ## W2 — "Win-back (90 days)"
 

@@ -78,7 +78,7 @@ associations → error tickets. About 10 HubSpot requests per 100 orders, far un
 | cancelled, failed | Closed lost |
 | refunded | Refunded (amount 0, `refund_amount` = refunded total) |
 
-Contact properties written by the sync: `total_orders`, `total_revenue` (paid orders, net of refunds),
+Contact properties written by the sync: `total_orders`, `woo_total_revenue` (paid orders, net of refunds; HubSpot's own `total_revenue` is read-only),
 `first_order_date`, `last_order_date`, `woo_customer_id`, `data_quality_status`, `data_quality_issues`.
 `customer_segment` (new / repeat / VIP) is set by HubSpot workflow W1 — see
 [docs/hubspot-config.md](docs/hubspot-config.md) for W1, W2, the list and the dashboard.
