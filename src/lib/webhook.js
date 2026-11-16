@@ -8,3 +8,11 @@ export function verifyWooSignature(rawBody, signatureHeader, secret) {
   const received = Buffer.from(signatureHeader.trim());
   return expected.length === received.length && timingSafeEqual(expected, received);
 }
+
+// Constant-time comparison for shared tokens (backfill webhook). Empty never matches.
+export function safeEqual(received, expected) {
+  if (typeof received !== 'string' || typeof expected !== 'string' || !expected) return false;
+  const a = Buffer.from(received);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}

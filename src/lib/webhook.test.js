@@ -24,3 +24,13 @@ test('verifyWooSignature returns false (no throw) on missing or wrong-length hea
   assert.equal(verifyWooSignature(body, undefined, secret), false);
   assert.equal(verifyWooSignature(body, sign(body), ''), false, 'empty secret never validates');
 });
+
+import { safeEqual } from './webhook.js';
+
+test('safeEqual compares tokens in constant time and never throws', () => {
+  assert.equal(safeEqual('token-123', 'token-123'), true);
+  assert.equal(safeEqual('token-123', 'token-124'), false);
+  assert.equal(safeEqual('short', 'longer-token'), false);
+  assert.equal(safeEqual(undefined, 'x'), false);
+  assert.equal(safeEqual('', ''), false, 'empty secret never matches');
+});
