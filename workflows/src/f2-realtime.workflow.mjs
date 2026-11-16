@@ -47,10 +47,13 @@ return [{ json: { action: 'sync', topic: headers['x-wc-webhook-topic'], order, e
       ] },
       options: {},
     }, { credentials: CREDENTIALS.woo, alwaysOutputData: true }),
-    code('Build sync input', `const { order, email } = $('Only orders').first().json;
+    // Webhooks can arrive late or out of order (an old "completed" after the refund). The order is re-read
+    // from Woo in "Customer history", so what gets synced is always its current state, not the payload's.
+    code('Build sync input', `const { order: payload, email } = $('Only orders').first().json;
 const found = $input.all().map((item) => item.json).filter((o) => o && o.id);
-const history = found.filter((o) => o.id !== order.id && String(o.billing?.email ?? '').trim().toLowerCase() === email);
-return [{ json: { orders: [order], history: [...history, order] } }];`),
+const current = found.find((o) => o.id === payload.id) ?? payload;
+const history = found.filter((o) => o.id !== current.id && String(o.billing?.email ?? '').trim().toLowerCase() === email);
+return [{ json: { orders: [current], history: [...history, current] } }];`),
     callWorkflow('Sync order', IDS.syncOrders),
   ];
 
