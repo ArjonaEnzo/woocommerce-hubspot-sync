@@ -21,7 +21,7 @@ test('inlineModules produces a plain script with the library functions', () => {
 });
 
 test('inlineModules turns node:crypto imports into require calls', () => {
-  const code = inlineModules(['src/lib/webhook.js']);
+  const code = inlineModules(['src/lib/webhook.ts']);
   assert.match(code, /const \{ createHmac, timingSafeEqual \} = require\('crypto'\);/);
   const { verifyWooSignature } = evaluate(code, ['verifyWooSignature']);
   const sig = createHmac('sha256', 's').update('b').digest('base64');

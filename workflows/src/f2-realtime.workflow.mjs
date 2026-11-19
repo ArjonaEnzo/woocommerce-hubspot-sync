@@ -3,7 +3,7 @@
 import { IDS, CREDENTIALS, node, code, callWorkflow, ifTrue, workflow } from './n8n.mjs';
 
 export default function build({ inline }) {
-  const lib = inline(['src/lib/webhook.js']);
+  const lib = inline(['src/lib/webhook.ts']);
   const nodes = [
     node('Woo webhook', 'n8n-nodes-base.webhook', 2, {
       httpMethod: 'POST',

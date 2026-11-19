@@ -12,7 +12,7 @@ export default function build({ inline }) {
     node('Run via webhook', 'n8n-nodes-base.webhook', 2, {
       httpMethod: 'POST', path: 'woo-backfill', responseMode: 'responseNode', options: {},
     }, { webhookId: '0b7f3c1d-2e4a-4f6b-8c9d-0a1b2c3d4e5f' }),
-    code('Check token', `${inline(['src/lib/webhook.js'])}
+    code('Check token', `${inline(['src/lib/webhook.ts'])}
 
 const trigger = $input.first().json;
 const authorized = safeEqual(trigger.headers?.['x-backfill-token'], $env.WOO_WEBHOOK_SECRET);

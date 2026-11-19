@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import { verifyWooSignature } from './webhook.js';
+import { verifyWooSignature } from './webhook.ts';
 
 const secret = 'test-secret';
 const body = '{"id":101,"status":"completed"}';
-const sign = (b, s = secret) => createHmac('sha256', s).update(b, 'utf8').digest('base64');
+const sign = (b: string, s = secret) => createHmac('sha256', s).update(b, 'utf8').digest('base64');
 
 test('verifyWooSignature accepts the signature Woo computes', () => {
   assert.equal(verifyWooSignature(body, sign(body), secret), true);
@@ -25,7 +25,7 @@ test('verifyWooSignature returns false (no throw) on missing or wrong-length hea
   assert.equal(verifyWooSignature(body, sign(body), ''), false, 'empty secret never validates');
 });
 
-import { safeEqual } from './webhook.js';
+import { safeEqual } from './webhook.ts';
 
 test('safeEqual compares tokens in constant time and never throws', () => {
   assert.equal(safeEqual('token-123', 'token-123'), true);
