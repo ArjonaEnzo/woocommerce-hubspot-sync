@@ -133,12 +133,14 @@ Contact properties written by the sync: `total_orders`, `woo_total_revenue` (pai
 | Real-time flow re-reads the order from Woo | Webhooks can arrive late or out of order; the synced state is always the current one |
 | Bad fields are dropped, never block the sync | A typo in a phone must not hide a $500 order from sales |
 | Orders with an unusable email still sync (deal without contact) + ticket | Revenue stays right; someone gets a task to fix the email |
-| Logic in `src/lib` (plain JS, unit-tested), inlined into Code nodes at build time | What runs in n8n is exactly what the tests cover |
+| Logic in `src/lib` (strict TypeScript, unit-tested), types stripped and inlined into Code nodes at build time | What runs in n8n is exactly what the tests and the type checker cover |
+| Types stripped by Node itself (`module.stripTypeScriptTypes`), erasable syntax only | No bundler or runtime dependency; the generated workflow code is the source minus its types |
 | Service Key auth | HubSpot stopped allowing new private apps on 2026-10-26 |
 
 ## Run it
 
-Requirements: Docker, Node 22+. No npm dependencies.
+Requirements: Docker, Node 22.18+ (runs the TypeScript sources directly). No runtime dependencies;
+`npm install` only adds the type checker (`typescript`, `@types/node`).
 
 ```bash
 cp .env.example .env            # set WP_ADMIN_PASSWORD; HUBSPOT_SERVICE_KEY when you have one
@@ -157,8 +159,8 @@ No HubSpot account yet? `docker compose --profile mock up -d hubspot-mock` start
 (`scripts/hubspot-mock.mjs`); start n8n with `HUBSPOT_BASE_URL=http://hubspot-mock:4010` and verify with
 `VERIFY_HUBSPOT_URL=http://localhost:4010`. It also injects 429/5xx on demand (`POST /__fail`).
 
-Tests: `npm test` (node:test, 93 tests: validation, mapping, sync plan, webhook signature, retry policy,
-generator, mock, build).
+Tests: `npm test` (node:test, 95 tests: validation, mapping, sync plan, webhook signature, retry policy,
+generator, mock, build). Types: `npm run typecheck` (strict, `noUncheckedIndexedAccess`). Both: `npm run check`.
 
 ## What went wrong (and the fix)
 
@@ -199,6 +201,6 @@ Everything below was found by running the sync, not by reading docs. Full log: [
 ## Stack
 
 WooCommerce REST API & webhooks · n8n 2.47 · HubSpot CRM API (objects v3, associations v4) ·
-HubSpot workflows & reports · Docker Compose · Node 24 (`node:test`).
+HubSpot workflows & reports · TypeScript (strict, type-stripped) · Docker Compose · Node 24 (`node:test`).
 
 MIT license.
