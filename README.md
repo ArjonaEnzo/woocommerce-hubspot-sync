@@ -200,7 +200,7 @@ Everything below was found by running the sync, not by reading docs. Full log: [
 
 ## Stack
 
-WooCommerce REST API & webhooks · n8n 2.47 · HubSpot CRM API (objects v3, associations v4) ·
+WooCommerce REST API & webhooks · n8n 2.48 · HubSpot CRM API (objects v3, associations v4) ·
 HubSpot workflows & reports · TypeScript (strict, type-stripped) · Docker Compose · Node 24 (`node:test`).
 
 MIT license.
