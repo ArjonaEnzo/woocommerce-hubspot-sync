@@ -8,6 +8,18 @@ retries that never create duplicates. Built with n8n and the HubSpot CRM API; ru
 > Demo project. All data is generated (seed 42): fictional names, company domains are subdomains of the
 > IANA-reserved `example.com`, no real customers. HubSpot side runs in a free developer test account.
 
+## Walkthrough: one customer, seven events
+
+What the sync does for a sales team, told through one customer: first order, delivery, a duplicate
+webhook, a refund, a mistyped email, repeat purchases and 90 days of silence. Each step can be compared
+against a basic "create a deal per order" connector.
+
+[![Interactive walkthrough of the sync](docs/walkthrough/walkthrough.gif)](https://arjonaenzo.github.io/woocommerce-hubspot-sync/docs/walkthrough/)
+
+**[Open the interactive walkthrough →](https://arjonaenzo.github.io/woocommerce-hubspot-sync/docs/walkthrough/)**
+(or open [`docs/walkthrough/index.html`](docs/walkthrough/index.html) locally). The story is illustrative;
+the numbers in each step come from the real run below.
+
 ## Result against a real HubSpot account (2026-11-16)
 
 `node scripts/verify-hubspot.mjs` after the backfill, two real-time bursts and the workflows:
@@ -27,6 +39,15 @@ retries that never create duplicates. Built with n8n and the HubSpot CRM API; ru
 | ![WooCommerce Revenue dashboard](docs/screenshots/01-dashboard.jpg) | ![Deals in the WooCommerce pipeline](docs/screenshots/02-pipeline.jpg) |
 | **Contact (VIP, at risk)** | **A sync error, explained** |
 | ![Contact record with company, deals and win-back task](docs/screenshots/03-contact-vip.jpg) | ![Ticket for a batch HubSpot rejected](docs/screenshots/04-error-ticket.jpg) |
+
+### Live refund test (2026-11-18)
+
+Order #267 was refunded in WooCommerce two days after the backfill. The real-time flow updated the deal
+it had created on 2026-11-16: same deal, stage Paid → Refunded, amount 0, `refund_amount` 16.
+
+| WooCommerce: order #267 refunded | HubSpot: the same deal moved to Refunded |
+|---|---|
+| ![WooCommerce order 267 with a full refund](docs/screenshots/05-refund-woo.jpg) | ![HubSpot deal Woo #267 with its stage history Paid to Refunded](docs/screenshots/06-refund-hubspot.jpg) |
 
 ## Why not the official app?
 
