@@ -18,6 +18,10 @@ if ! wp core is-installed >/dev/null 2>&1; then
     --admin_email=admin@demo-store.test --skip-email
 fi
 
+# The official image only tracks the newest WordPress branch, so the 7.0 image lags behind 7.0.x
+# security releases and core lives in the wp_data volume anyway: apply minor updates explicitly.
+wp core update --minor
+
 wp plugin is-active woocommerce >/dev/null 2>&1 || wp plugin install woocommerce --activate
 
 if [ -z "${WOO_WEBHOOK_SECRET:-}" ]; then
