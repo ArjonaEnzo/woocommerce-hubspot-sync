@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { createHmac } from 'node:crypto';
-import { inlineModules, findSecrets } from './build-workflows.mjs';
+import { inlineModules, findSecrets, stripTypes } from './build-workflows.mjs';
 
 const require = createRequire(import.meta.url);
 // Evaluates inlined code the way an n8n Code node does: plain script with `require` in scope.
@@ -28,8 +28,38 @@ test('inlineModules turns node:crypto imports into require calls', () => {
   assert.equal(verifyWooSignature('b', sig, 's'), true);
 });
 
+test('stripTypes removes TypeScript and keeps the JavaScript byte for byte', () => {
+  const ts = [
+    "import type { WooOrder } from './types.ts';",
+    '',
+    'interface Pair {',
+    '  from: string;',
+    '}',
+    '',
+    'const money = (n: number): string => (Math.round(n * 100) / 100).toFixed(2);',
+    'export function f(order: WooOrder, ids: Map<string, string> = new Map()): string | null {',
+    '  const x = (order as { id: number }).id; // keep this comment',
+    "  return ids.get(String(x))!;",
+    '}',
+  ].join('\n');
+  // The blank lines that separated the removed type blocks stay (inlineModules trims each module anyway).
+  assert.equal(stripTypes(ts), [
+    '',
+    '',
+    'const money = (n) => (Math.round(n * 100) / 100).toFixed(2);',
+    'export function f(order, ids = new Map()) {',
+    '  const x = (order).id; // keep this comment',
+    '  return ids.get(String(x));',
+    '}',
+  ].join('\n'));
+});
+
+test('stripTypes rejects syntax that cannot be erased (enums need a compiler)', () => {
+  assert.throws(() => stripTypes('enum A { B }'), /enum|strip|TypeScript/i);
+});
+
 test('inlineModules fails loudly on a missing file', () => {
-  assert.throws(() => inlineModules(['src/lib/nope.js']), /ENOENT|nope\.js/);
+  assert.throws(() => inlineModules(['src/lib/nope.ts']), /ENOENT|nope\.ts/);
 });
 
 test('findSecrets flags tokens and passwords, ignores normal code', () => {

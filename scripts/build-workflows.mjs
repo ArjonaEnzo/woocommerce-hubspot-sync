@@ -3,15 +3,62 @@
 // The library code in src/lib is inlined into Code nodes, so the code n8n runs is the code the tests cover.
 // The build fails if anything that looks like a secret ends up in the output.
 import { readFileSync, writeFileSync, readdirSync, mkdirSync } from 'node:fs';
+import { stripTypeScriptTypes } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
+// Node's built-in type stripper (no npm dependency). It is still flagged experimental: silence only
+// that one warning so the build output stays readable.
+const emitWarning = process.emitWarning;
+process.emitWarning = (warning, ...rest) =>
+  (String(warning).includes('stripTypeScriptTypes') ? undefined : emitWarning.call(process, warning, ...rest));
+
+/**
+ * TypeScript → the JavaScript n8n runs. Node's 'strip' mode replaces every type annotation with spaces,
+ * keeping positions, so both texts can be compared character by character: what differs was a type and
+ * is dropped, together with the spaces that only separated it (`x: string` → `x`, `(e as Error)` → `(e)`).
+ * Lines that held only types disappear. Everything else stays byte for byte.
+ */
+export function stripTypes(source) {
+  const stripped = stripTypeScriptTypes(source, { mode: 'strip' });
+  if (stripped.length !== source.length) throw new Error('type stripping changed positions; cannot clean output');
+  const n = source.length;
+  const erased = (i) => stripped[i] !== source[i];
+  const blank = (i) => source[i] === ' ' || source[i] === '\t';
+  let out = '';
+  for (let i = 0; i < n; i++) {
+    if (erased(i)) continue;
+    if (blank(i)) {
+      let r = i;
+      while (r < n && blank(r) && !erased(r)) r++;
+      if (r < n && erased(r)) {
+        let l = i;
+        while (l >= 0 && blank(l) && !erased(l)) l--;
+        if (l >= 0 && erased(l)) continue; // inside a type
+        let k = r;
+        while (k < n && source[k] !== '\n' && (erased(k) || blank(k))) k++;
+        if (k >= n || source[k] === '\n' || ')],;.'.includes(source[k])) continue; // before a trailing type
+      }
+    }
+    out += source[i];
+  }
+  const srcLines = source.split('\n');
+  const outLines = out.split('\n');
+  if (srcLines.length !== outLines.length) throw new Error('type stripping changed the line count');
+  return outLines
+    .filter((line, i) => line.trim() !== '' || srcLines[i].trim() === '')
+    .join('\n')
+    // Removing a block of types can leave blank lines stacked: keep one, as the source does.
+    .replace(/\n{3,}/g, (m) => (source.includes(m) ? m : '\n\n'));
+}
+
 export function inlineModules(files) {
   const requires = new Set();
   const bodies = files.map((file) => {
-    const source = readFileSync(join(ROOT, file), 'utf8');
+    const raw = readFileSync(join(ROOT, file), 'utf8');
+    const source = file.endsWith('.ts') ? stripTypes(raw) : raw;
     const body = source
       .replace(/^import\s*\{([^}]+)\}\s*from\s*'node:(\w+)';\s*$/gm, (_m, names, mod) => {
         requires.add(`const { ${names.split(',').map((n) => n.trim()).join(', ')} } = require('${mod}');`);
