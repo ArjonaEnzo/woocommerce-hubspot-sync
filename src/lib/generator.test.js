@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { generateOrders } from './generator.js';
-import { validateCustomer } from './validate.js';
+import { validateCustomer } from './validate.ts';
 import { companyDomain } from './mapping.js';
 
 const catalog = JSON.parse(readFileSync(new URL('../../data/catalog.json', import.meta.url)));

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateEmail, normalizePhone, normalizeCountry, validateCustomer } from './validate.js';
+import { validateEmail, normalizePhone, normalizeCountry, validateCustomer } from './validate.ts';
 
 test('validateEmail trims and lowercases a valid email', () => {
   assert.deepEqual(validateEmail(' Ana@Example.COM '), { value: 'ana@example.com', issue: null });

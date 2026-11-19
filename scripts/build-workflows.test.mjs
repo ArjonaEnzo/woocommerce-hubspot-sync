@@ -9,7 +9,7 @@ const require = createRequire(import.meta.url);
 const evaluate = (code, names) => new Function('require', `${code}\nreturn { ${names.join(', ')} };`)(require);
 
 test('inlineModules produces a plain script with the library functions', () => {
-  const code = inlineModules(['src/lib/validate.js', 'src/lib/mapping.js', 'src/lib/retry.js']);
+  const code = inlineModules(['src/lib/validate.ts', 'src/lib/mapping.js', 'src/lib/retry.js']);
   assert.doesNotMatch(code, /^\s*(import|export)\s/m);
   const { buildDealInput, backoffDelayMs } = evaluate(code, ['buildDealInput', 'backoffDelayMs']);
   assert.equal(backoffDelayMs(3), 4000);

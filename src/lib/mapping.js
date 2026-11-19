@@ -1,5 +1,5 @@
 // WooCommerce order → HubSpot CRM inputs. Pure functions, inlined into n8n Code nodes.
-import { validateCustomer, validateEmail } from './validate.js';
+import { validateCustomer, validateEmail } from './validate.ts';
 
 // Woo status → internal stage key. Real HubSpot stage ids come from hubspot-setup (.hubspot-ids.json).
 export const STAGE_BY_STATUS = {
