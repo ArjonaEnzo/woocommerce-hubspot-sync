@@ -4,7 +4,7 @@
 // Uses VERIFY_HUBSPOT_URL (default https://api.hubapi.com; http://localhost:4010 for the mock).
 import { existsSync } from 'node:fs';
 import { pipelineContext } from '../src/lib/sync-plan.js';
-import { verifyReport } from '../src/lib/verify.js';
+import { verifyReport } from '../src/lib/verify.ts';
 
 const envFile = new URL('../.env', import.meta.url);
 if (existsSync(envFile)) process.loadEnvFile(envFile);

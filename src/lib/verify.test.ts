@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { verifyReport } from './verify.js';
+import { verifyReport } from './verify.ts';
 
-const deal = (id, stage, amount) => ({ id: `h${id}`, properties: { woo_order_id: String(id), dealstage: stage, amount } });
+const deal = (id: number, stage: string, amount: string) => ({ id: `h${id}`, properties: { woo_order_id: String(id), dealstage: stage, amount } });
 const stageIds = { closedwon: 'won', refunded: 'ref' };
 
 test('verifyReport counts deals, duplicates and closed-won revenue', () => {
