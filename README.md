@@ -16,9 +16,10 @@ against a basic "create a deal per order" connector.
 
 [![Interactive walkthrough of the sync](docs/walkthrough/walkthrough.gif)](https://arjonaenzo.github.io/woocommerce-hubspot-sync/docs/walkthrough/)
 
-**[Open the interactive walkthrough →](https://arjonaenzo.github.io/woocommerce-hubspot-sync/docs/walkthrough/)**
-(or open [`docs/walkthrough/index.html`](docs/walkthrough/index.html) locally). The story is illustrative;
-the numbers in each step come from the real run below.
+**[Open the interactive walkthrough →](https://arjonaenzo.github.io/woocommerce-hubspot-sync/docs/walkthrough/?lang=en)**
+· **[Versión en español →](https://arjonaenzo.github.io/woocommerce-hubspot-sync/docs/walkthrough/?lang=es)**
+(or open [`docs/walkthrough/index.html`](docs/walkthrough/index.html) locally; EN/ES switch in the header).
+The story is illustrative; the numbers in each step come from the real run below.
 
 ## Result against a real HubSpot account (2026-11-16)
 
