@@ -153,15 +153,23 @@ kbd{font:inherit;border:1px solid var(--line);border-radius:4px;padding:0 4px;ba
 .learn li.done{color:var(--ink)}
 .learn li.done::before{background:var(--accent);border-color:var(--accent);box-shadow:inset 0 0 0 3px var(--surface)}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important}}
+.tops{display:flex;gap:8px;flex-wrap:wrap}
+.switch.lang button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
 </style>
 <style>body{margin:0}</style>
 </head>
 <body>
 <div class="top">
-  <div class="brand"><i></i>Woo → HubSpot <span class="eyebrow" style="margin-left:6px">7-step walkthrough</span></div>
+  <div class="brand"><i></i>Woo → HubSpot <span class="eyebrow" style="margin-left:6px" data-i18n="kicker">7-step walkthrough</span></div>
+  <div class="tops">
+  <div class="switch lang" role="group" aria-label="Language">
+    <button type="button" id="l-en" aria-pressed="true">EN</button>
+    <button type="button" id="l-es" aria-pressed="false">ES</button>
+  </div>
   <div class="switch" role="group" aria-label="Compare">
-    <button type="button" id="m-con" class="con" aria-pressed="true">With this sync</button>
-    <button type="button" id="m-sin" class="sin" aria-pressed="false">Basic connector</button>
+    <button type="button" id="m-con" class="con" aria-pressed="true" data-i18n="modeCon">With this sync</button>
+    <button type="button" id="m-sin" class="sin" aria-pressed="false" data-i18n="modeSin">Basic connector</button>
+  </div>
   </div>
 </div>
 
@@ -169,14 +177,14 @@ kbd{font:inherit;border:1px solid var(--line);border-radius:4px;padding:0 4px;ba
   <aside class="side">
     <nav class="card toc" aria-label="Steps" id="toc"></nav>
     <section class="card links">
-      <div class="eyebrow">See it for real</div>
-      <a href="../screenshots/02-pipeline.jpg"><span>Deal pipeline</span><span>screenshot</span></a>
-      <a href="../screenshots/06-refund-hubspot.jpg"><span>Refunded deal #267</span><span>screenshot</span></a>
-      <a href="../screenshots/03-contact-vip.jpg"><span>VIP / at-risk contact</span><span>screenshot</span></a>
-      <a href="../screenshots/04-error-ticket.jpg"><span>Error ticket</span><span>screenshot</span></a>
-      <a href="../screenshots/01-dashboard.jpg"><span>Revenue dashboard</span><span>screenshot</span></a>
-      <a href="https://github.com/ArjonaEnzo/woocommerce-hubspot-sync"><span>Source code</span><span>GitHub ↗</span></a>
-      <p class="note">Screenshots come from a real HubSpot developer test account with generated data. Lucía and Martín are the illustrative story of this page.</p>
+      <div class="eyebrow" data-i18n="real">See it for real</div>
+      <a href="../screenshots/02-pipeline.jpg"><span data-i18n="l1">Deal pipeline</span><span data-i18n="shot">screenshot</span></a>
+      <a href="../screenshots/06-refund-hubspot.jpg"><span data-i18n="l2">Refunded deal #267</span><span data-i18n="shot">screenshot</span></a>
+      <a href="../screenshots/03-contact-vip.jpg"><span data-i18n="l3">VIP / at-risk contact</span><span data-i18n="shot">screenshot</span></a>
+      <a href="../screenshots/04-error-ticket.jpg"><span data-i18n="l4">Error ticket</span><span data-i18n="shot">screenshot</span></a>
+      <a href="../screenshots/01-dashboard.jpg"><span data-i18n="l5">Revenue dashboard</span><span data-i18n="shot">screenshot</span></a>
+      <a href="https://github.com/ArjonaEnzo/woocommerce-hubspot-sync"><span data-i18n="l6">Source code</span><span>GitHub ↗</span></a>
+      <p class="note" data-i18n="note">Screenshots come from a real HubSpot developer test account with generated data. Lucía and Martín are the illustrative story of this page.</p>
     </section>
   </aside>
 
@@ -185,30 +193,30 @@ kbd{font:inherit;border:1px solid var(--line);border-radius:4px;padding:0 4px;ba
       <div class="crumb" id="crumb"></div>
       <div class="lh-row">
         <h1 id="h1"></h1>
-        <div class="chips"><span class="chip">Yerba mate shop</span><span class="chip">WooCommerce</span><span class="chip">n8n</span><span class="chip">HubSpot</span></div>
+        <div class="chips"><span class="chip" data-i18n="shop">Yerba mate shop</span><span class="chip">WooCommerce</span><span class="chip">n8n</span><span class="chip">HubSpot</span></div>
       </div>
       <div class="metrics" id="metrics"></div>
     </section>
 
     <section class="card scene-card" aria-label="System scene">
       <div class="scene-tools">
-        <span class="trigger">Trigger: <b id="trigger"></b></span>
-        <button type="button" class="tbtn" id="replay">↻ Replay</button>
+        <span class="trigger"><span data-i18n="trigger">Trigger:</span> <b id="trigger"></b></span>
+        <button type="button" class="tbtn" id="replay" data-i18n="replay">↻ Replay</button>
       </div>
       <div class="scene-scroll">
         <div class="scene" id="scene">
           <svg viewBox="0 0 900 480" aria-hidden="true" id="svg"></svg>
-          <div class="ov" style="left:22.2%;top:21%"><span class="tagname"><i style="background:var(--woo-l)"></i>Woo store</span><div class="bubble" id="b-woo"></div></div>
+          <div class="ov" style="left:22.2%;top:21%"><span class="tagname"><i style="background:var(--woo-l)"></i><span data-i18n="store">Woo store</span></span><div class="bubble" id="b-woo"></div></div>
           <div class="ov" style="left:50%;top:93%;max-width:44%"><div class="bubble" id="b-bridge"></div></div>
           <div class="ov" style="left:50%;top:51%"><span class="tagname" id="t-bridge"></span></div>
           <div class="ov" style="left:77.8%;top:21%;max-width:38%"><span class="tagname"><i style="background:var(--hub-l)"></i>HubSpot</span><div class="bubble" id="b-hub"></div></div>
         </div>
       </div>
-      <div class="legend"><span style="--c:var(--accent)">data in transit</span><span style="--c:var(--bad)">data lost or wrong</span><span style="--c:var(--hub-l)">rule inside HubSpot</span></div>
+      <div class="legend"><span style="--c:var(--accent)" data-i18n="lg1">data in transit</span><span style="--c:var(--bad)" data-i18n="lg2">data lost or wrong</span><span style="--c:var(--hub-l)" data-i18n="lg3">rule inside HubSpot</span></div>
     </section>
 
     <section class="card stepper">
-      <div class="st-row"><span class="eyebrow">In this walkthrough</span><span class="eyebrow" id="st-count"></span></div>
+      <div class="st-row"><span class="eyebrow" data-i18n="inthis">In this walkthrough</span><span class="eyebrow" id="st-count"></span></div>
       <div class="track" id="track"></div>
     </section>
   </main>
@@ -219,12 +227,12 @@ kbd{font:inherit;border:1px solid var(--line);border-radius:4px;padding:0 4px;ba
       <h2 id="p-title"></h2>
       <p class="story" id="p-story"></p>
       <div class="key" id="p-key"><div class="rk" id="p-rk"></div><p id="p-res"></p></div>
-      <div class="demo"><div class="rk">In the real run (HubSpot test account)</div><div id="p-demo"></div><a id="p-link"></a></div>
-      <div class="nav"><button class="btn" id="prev" type="button">← Back</button><button class="btn primary" id="next" type="button"></button></div>
-      <div class="keys"><kbd>←</kbd> <kbd>→</kbd> steps · <kbd>C</kbd> compare · <kbd>R</kbd> replay</div>
+      <div class="demo"><div class="rk" data-i18n="realrun">In the real run (HubSpot test account)</div><div id="p-demo"></div><a id="p-link"></a></div>
+      <div class="nav"><button class="btn" id="prev" type="button" data-i18n="back">← Back</button><button class="btn primary" id="next" type="button"></button></div>
+      <div class="keys" data-i18n-html="keys"><kbd>←</kbd> <kbd>→</kbd> steps · <kbd>C</kbd> compare · <kbd>R</kbd> replay</div>
     </section>
     <section class="card learn">
-      <div class="eyebrow">You will see</div>
+      <div class="eyebrow" data-i18n="willsee">You will see</div>
       <ul id="learn"></ul>
     </section>
   </aside>
@@ -377,44 +385,177 @@ function animate(lost,hubOnly){
 
 
 /* ---------- state ---------- */
+/* ---------- Spanish (rioplatense) ---------- */
+// Stage, status and property names stay as HubSpot and Woo show them (Paid, Closed won, processing…).
+const S_ES = [
+ {short:"Primera compra", badge:["Caso feliz",""], trigger:"order.created",
+  title:"Lucía compra por primera vez",
+  story:"Lucía compra 2 kg de yerba por USD 48. Paga con tarjeta y el pedido queda en processing.",
+  con:"El sync busca a Lucía por email (no existe, la crea), la asocia a su empresa y crea el deal #301 en Paid. Ventas la ve en segundos.",
+  sin:"En el caso feliz cualquier conector funciona: crea el deal y listo. La diferencia aparece desde el paso 2.",
+  demo:"217 pedidos de Woo → 217 deals. 128 contactos y 9 empresas creados solos.",
+  woo:"<b>#301</b> · Lucía · $48<br>"+P("paid","processing"),
+  br:{con:["good","✓ ¿existe #301? no → crear<br>✓ datos ok · processing → Paid"],sin:["warn","! crea el deal sin preguntar nada"]},
+  hub:{con:["good","<b>#301</b> Lucía $48 "+P("paid","Paid")+"<br>contacto nuevo · segmento Nueva"],sin:["","<b>#301</b> Lucía $48 "+P("paid","Paid")]},
+  m:{con:[1,0,48,0,"Nueva"],sin:[1,0,48,0,"—"]}},
+ {short:"Se entrega", badge:["Actualización",""], trigger:"order.updated",
+  title:"El pedido se entrega",
+  story:"El paquete llega y la tienda marca el pedido como completed. No es un pedido nuevo: es el mismo, cambiado.",
+  con:"El sync encuentra el deal #301 por woo_order_id y lo mueve a Closed won. El dashboard de revenue sube solo.",
+  sin:"Un conector básico solo escucha pedidos nuevos. El deal queda en Paid para siempre y el reporte del lunes no coincide con la tienda.",
+  demo:"110 deals en Closed won, USD 49.629,44 en el dashboard de HubSpot.",
+  woo:"<b>#301</b> · $48<br>"+P("won","completed"),
+  br:{con:["good","✓ ¿existe #301? sí → actualizar<br>✓ completed → Closed won"],sin:["bad","✕ no es pedido nuevo → lo ignora"]},
+  hub:{con:["good","<b>#301</b> $48 "+P("won","Closed won")],sin:["warn","<b>#301</b> $48 "+P("paid","Paid")+"<br>desactualizado"]},
+  m:{con:[1,0,48,0,"Nueva"],sin:[1,0,48,0,"—"]}},
+ {short:"Aviso repetido", badge:["Problema","problem"], trigger:"order.updated (reenviado)",
+  title:"Woo manda el mismo aviso dos veces",
+  story:"Pasa seguido: el servidor tarda, Woo no recibe confirmación y reintenta. Llega otra vez el mismo evento del pedido #301.",
+  con:"Idempotencia: el sync hace upsert por el woo_order_id único, así que el deal se actualiza, no se vuelve a crear. Sigue habiendo un solo deal y la venta cuenta una vez.",
+  sin:"El conector crea un deal por aviso. Ahora hay dos #301 y el revenue dice USD 96 por una venta de USD 48.",
+  demo:"0 woo_order_id duplicados en 217 deals, incluso con ráfagas de 43 webhooks a la vez. verify-hubspot.mjs lo chequea en cada corrida.",
+  woo:"<b>#301</b> · $48<br>"+P("won","completed")+" aviso ×2",
+  br:{con:["good","✓ ¿existe #301? sí → mismo deal<br>nada que crear"],sin:["bad","✕ crea otro deal igual"]},
+  hub:{con:["good","<b>#301</b> $48 "+P("won","Closed won")+"<br>sigue siendo un deal"],sin:["bad","<b>#301</b> "+P("paid","Paid")+" <b>#301</b> "+P("dup","duplicado")+"<br>revenue $96"]},
+  m:{con:[1,0,48,0,"Nueva"],sin:[2,1,96,0,"—"]}},
+ {short:"Reembolso", badge:["Problema","problem"], trigger:"order.updated → refunded",
+  title:"Lucía pide la plata de vuelta",
+  story:"La yerba llegó húmeda. Soporte le devuelve los USD 48 y el pedido pasa a refunded en Woo.",
+  con:"El deal pasa a Refunded con amount 0 y refund_amount 48. El revenue baja y nadie de ventas la llama esta semana para venderle más.",
+  sin:"HubSpot sigue mostrando la venta, y dos veces. Un vendedor la llama para ofrecerle un combo justo después del reclamo.",
+  demo:"Probado en vivo el 2026-11-18: el pedido #267 reembolsado en Woo → su deal (creado el 2026-11-16) pasó de Paid a Refunded, amount 0, refund_amount 16.",
+  woo:"<b>#301</b> · reembolso $48<br>"+P("ref","refunded"),
+  br:{con:["good","✓ ¿existe #301? sí → actualizar<br>✓ refunded → Refunded, amount 0"],sin:["bad","✕ no es pedido nuevo → lo ignora"]},
+  hub:{con:["good","<b>#301</b> $0 "+P("ref","Refunded")+"<br>refund_amount 48"],sin:["bad","<b>#301</b> $48 ×2 "+P("paid","Paid")+"<br>ventas la llama igual"]},
+  m:{con:[1,0,0,0,"Nueva"],sin:[2,1,96,0,"—"]}},
+ {short:"Dato sucio", badge:["Dato sucio","problem"], trigger:"order.created",
+  title:"Otro cliente escribe mal su email",
+  story:"Martín compra USD 35 y pone martin@gmail, sin el .com. Woo lo acepta; HubSpot rechaza ese email.",
+  con:"El sync lo detecta antes de mandarlo. El deal se sincroniza igual (sin contacto) y un ticket dice qué pedido falló y por qué. La venta no se pierde y el resto sigue andando.",
+  sin:"HubSpot rechaza el pedido y el conector falla en silencio. La venta de Martín no existe en el CRM y nadie se entera.",
+  demo:"9 pedidos con email inutilizable se sincronizaron como deals + tickets; 9 contactos marcados Needs review por teléfono o país mal cargados.",
+  woo:"<b>#305</b> · Martín · $35<br>martin@gmail",
+  br:{con:["warn","✓ ¿existe #305? no → crear<br>✕ email inválido → abrir ticket"],sin:["bad","✕ HubSpot responde 400 y se corta"]},
+  hub:{con:["warn","<b>#305</b> $35 "+P("paid","Paid")+"<br>Ticket: email inválido en #305"],sin:["bad","#305 no existe<br>nadie se entera"]},
+  m:{con:[2,0,35,1,"Nueva"],sin:[2,1,96,0,"—"]}},
+ {short:"Vuelve a comprar", badge:["Regla de negocio","rule"], trigger:"order.created × 2",
+  title:"Lucía vuelve y compra dos veces más",
+  story:"El reemplazo le llegó bien y quedó contenta. En un mes hace dos pedidos: USD 62 y USD 54.",
+  con:"El sync crea los dos deals y escribe sus totales (pedidos y gastado) en el contacto. El workflow W1 de HubSpot los usa para marcarla VIP y crearle una tarea al vendedor.",
+  sin:"Aparecen dos deals más, pero sin totales. Nadie sabe que es una clienta fiel y recibe los mismos mails que cualquiera.",
+  demo:"W1: 67 contactos → Customer. New 39 / Repeat 12 / VIP 16, con 0 segmentos que contradigan los totales sincronizados.",
+  woo:"<b>#318</b> $62 · <b>#334</b> $54<br>"+P("won","completed"),
+  br:{con:["good","✓ crear #318 y #334<br>✓ totales: 3 pedidos, USD 164"],sin:["warn","! crea dos deals, sin totales"]},
+  hub:{con:["good",P("won","Closed won")+" ×2<br>Lucía → <b>VIP</b> · tarea: ofrecerle suscripción"],sin:["","2 deals más en "+P("paid","Paid")+"<br>Lucía sin segmento"]},
+  m:{con:[4,0,151,1,"VIP"],sin:[4,1,212,0,"—"]}},
+ {short:"Se enfría", badge:["Regla de negocio","rule"], trigger:"revisión diaria dentro de HubSpot (W2)",
+  title:"Pasan 90 días sin que compre",
+  story:"Esta vez no hay evento en la tienda. Justamente ese es el problema: no pasa nada. Lucía dejó de comprar.",
+  con:"El workflow W2 revisa la fecha de última compra que escribió el sync. Lucía pasa a En riesgo y el vendedor recibe una tarea para recuperarla.",
+  sin:"Sin fecha de última compra en HubSpot no hay regla posible. Lucía se va a la competencia y nadie lo nota.",
+  demo:"W2: 39 clientes sin compra en 90 días → En riesgo + tarea de recuperación.",
+  woo:"sin pedidos de Lucía<br>hace 90 días",
+  br:{con:["","no pasa nada por acá<br>el dato ya había llegado"],sin:["","no pasa nada por acá<br>nunca mandó la fecha"]},
+  hub:{con:["warn","Lucía · "+P("won","VIP")+P("ref","En riesgo")+"<br>tarea: llamarla esta semana"],sin:["bad","Lucía se fue<br>y nadie se enteró"]},
+  m:{con:[4,0,151,1,"VIP · En riesgo"],sin:[4,1,212,0,"—"]}},
+];
+
+const LANG = {
+  en: {S, L, MODS, LEARN, MK, T, ui: {
+    kicker:"7-step walkthrough", modeCon:"With this sync", modeSin:"Basic connector", real:"See it for real",
+    l1:"Deal pipeline", l2:"Refunded deal #267", l3:"VIP / at-risk contact", l4:"Error ticket", l5:"Revenue dashboard",
+    l6:"Source code", shot:"screenshot",
+    note:"Screenshots come from a real HubSpot developer test account with generated data. Lucía and Martín are the illustrative story of this page.",
+    shop:"Yerba mate shop", trigger:"Trigger:", replay:"↻ Replay", store:"Woo store",
+    lg1:"data in transit", lg2:"data lost or wrong", lg3:"rule inside HubSpot", inthis:"In this walkthrough",
+    realrun:"In the real run (HubSpot test account)", back:"← Back", willsee:"You will see",
+    keys:"<kbd>←</kbd> <kbd>→</kbd> steps · <kbd>C</kbd> compare · <kbd>R</kbd> replay",
+    title:"WooCommerce → HubSpot walkthrough"}},
+  es: {
+    S: S.map((s, k) => ({...s, ...S_ES[k]})),
+    L: {
+      board:[L.board[0],"Captura: el pipeline de deals →"],
+      d267:[L.d267[0],"Captura: el deal #267 pasó de Paid a Refunded →"],
+      tickets:[L.tickets[0],"Captura: un ticket de error de integración →"],
+      contacts:[L.contacts[0],"Captura: contacto VIP con tarea de recuperación →"],
+      dash:[L.dash[0],"Captura: el dashboard de revenue →"],
+    },
+    MODS: [["01. Sincronizar",[0,1]],["02. Proteger los datos",[2,3,4]],["03. Usar los datos",[5,6]]],
+    LEARN: [[0,"Qué hace el sync cuando entra un pedido"],[1,"Por qué actualizar importa tanto como crear"],[2,"Idempotencia: el mismo aviso dos veces nunca duplica una venta"],[3,"Cómo un reembolso corrige el pipeline"],[4,"Cómo se manejan los datos sucios sin frenar lo demás"],[5,"Cómo HubSpot convierte los datos sincronizados en tareas para ventas"]],
+    MK: ["Deals","Duplicados","Ventas USD","Tickets","Segmento de Lucía"],
+    T: {con:"Con este sync",sin:"Con un conector básico",bridgeCon:"Sync n8n",bridgeSin:"Conector básico",step:"Paso",of:"de",restart:"Volver al inicio ↺",next:"Siguiente: "},
+    ui: {
+      kicker:"recorrido en 7 pasos", modeCon:"Con este sync", modeSin:"Conector básico", real:"Verlo de verdad",
+      l1:"Pipeline de deals", l2:"Deal #267 reembolsado", l3:"Contacto VIP / en riesgo", l4:"Ticket de error", l5:"Dashboard de revenue",
+      l6:"Código fuente", shot:"captura",
+      note:"Las capturas son de una cuenta de prueba real de HubSpot con datos generados. Lucía y Martín son la historia de ejemplo de esta página.",
+      shop:"Tienda de yerba", trigger:"Dispara:", replay:"↻ Repetir", store:"Tienda Woo",
+      lg1:"dato que viaja", lg2:"dato perdido o mal", lg3:"regla dentro de HubSpot", inthis:"En este recorrido",
+      realrun:"En la corrida real (cuenta de prueba de HubSpot)", back:"← Atrás", willsee:"Vas a ver",
+      keys:"<kbd>←</kbd> <kbd>→</kbd> pasos · <kbd>C</kbd> comparar · <kbd>R</kbd> repetir",
+      title:"Recorrido WooCommerce → HubSpot"}},
+};
+
+const qLang = new URLSearchParams(location.search).get("lang");
+let lang = qLang === "es" || qLang === "en" ? qLang : null;
+if (!lang) { try { lang = localStorage.getItem("wh-lang"); } catch (e) {} }
+if (lang !== "es" && lang !== "en") lang = (navigator.language || "").toLowerCase().startsWith("es") ? "es" : "en";
+let D = LANG[lang];
+
+function applyStatic() {
+  document.documentElement.lang = lang;
+  document.title = D.ui.title;
+  document.querySelectorAll("[data-i18n]").forEach((n) => { n.textContent = D.ui[n.dataset.i18n]; });
+  document.querySelectorAll("[data-i18n-html]").forEach((n) => { n.innerHTML = D.ui[n.dataset.i18nHtml]; });
+  document.getElementById("l-en").setAttribute("aria-pressed", lang === "en");
+  document.getElementById("l-es").setAttribute("aria-pressed", lang === "es");
+}
+function setLang(next) {
+  lang = next; D = LANG[lang];
+  try { localStorage.setItem("wh-lang", lang); } catch (e) {}
+  applyStatic(); render(false);
+}
+
 let i=0,mode="con";const seen=new Set([0]);
-try{const s=JSON.parse(localStorage.getItem("wh-walk")||"null");if(s&&s.i>=0&&s.i<S.length){i=s.i;mode=s.mode==="sin"?"sin":"con";for(let k=0;k<=i;k++)seen.add(k);}}catch(e){}
+try{const s=JSON.parse(localStorage.getItem("wh-walk")||"null");if(s&&s.i>=0&&s.i<D.S.length){i=s.i;mode=s.mode==="sin"?"sin":"con";for(let k=0;k<=i;k++)seen.add(k);}}catch(e){}
 const $=id=>document.getElementById(id);let prevM=null;
 
 function render(anim=true){
-  const s=S[i],sin=mode==="sin";
+  const s=D.S[i],sin=mode==="sin";
   try{localStorage.setItem("wh-walk",JSON.stringify({i,mode}));}catch(e){}
   $("m-con").setAttribute("aria-pressed",!sin);$("m-sin").setAttribute("aria-pressed",sin);
-  const mod=MODS.find(m=>m[1].includes(i));
-  $("crumb").textContent=`${mod[0]} / ${T.step} ${i+1} ${T.of} ${S.length}`;
+  const mod=D.MODS.find(m=>m[1].includes(i));
+  $("crumb").textContent=`${mod[0]} / ${D.T.step} ${i+1} ${D.T.of} ${D.S.length}`;
   $("h1").textContent=s.title;
   const m=s.m[mode];
-  $("metrics").innerHTML=m.map((v,k)=>{const cls=k===1?(v>0?"bad":"good"):"";const ch=prevM&&prevM[k]!==v;return `<div class="metric ${cls}"><div class="k">${MK[k]}</div><div class="v ${ch?"flash":""}">${k===2?"$"+v:v}</div></div>`;}).join("");
+  $("metrics").innerHTML=m.map((v,k)=>{const cls=k===1?(v>0?"bad":"good"):"";const ch=prevM&&prevM[k]!==v;return `<div class="metric ${cls}"><div class="k">${D.MK[k]}</div><div class="v ${ch?"flash":""}">${k===2?"$"+v:v}</div></div>`;}).join("");
   prevM=m;
   $("trigger").textContent=s.trigger;
   $("b-woo").innerHTML=s.woo;
   const br=s.br[mode];$("b-bridge").className="bubble "+br[0];$("b-bridge").innerHTML=br[1];
-  $("t-bridge").innerHTML=`<i style="background:var(--n8n-l)"></i>${sin?T.bridgeSin:T.bridgeCon}`;
+  $("t-bridge").innerHTML=`<i style="background:var(--n8n-l)"></i>${sin?D.T.bridgeSin:D.T.bridgeCon}`;
   const hb=s.hub[mode];$("b-hub").className="bubble "+hb[0];$("b-hub").innerHTML=hb[1];
   brG.setAttribute("opacity",s.hubOnly?.45:1);
-  $("toc").innerHTML=MODS.map(([name,ks])=>`<div class="mod"><div class="mh"><span>${name}</span><span>${ks.filter(k=>seen.has(k)).length}/${ks.length}</span></div>${ks.map(k=>`<button type="button" class="les ${k===i?"now":seen.has(k)?"seen":""}" data-k="${k}"><span class="b"></span>${S[k].short}</button>`).join("")}</div>`).join("");
-  $("st-count").textContent=`${T.step} ${i+1} ${T.of} ${S.length}`;
-  $("track").innerHTML=S.map((x,k)=>`<button type="button" class="stp ${k===i?"now":seen.has(k)?"seen":""}" data-k="${k}" ${k===i?'aria-current="step"':""}><span class="n">${k+1}</span><span class="l">${x.short}</span></button>`).join("");
-  $("p-count").textContent=`${T.step} ${i+1} / ${S.length}`;
+  $("toc").innerHTML=D.MODS.map(([name,ks])=>`<div class="mod"><div class="mh"><span>${name}</span><span>${ks.filter(k=>seen.has(k)).length}/${ks.length}</span></div>${ks.map(k=>`<button type="button" class="les ${k===i?"now":seen.has(k)?"seen":""}" data-k="${k}"><span class="b"></span>${D.S[k].short}</button>`).join("")}</div>`).join("");
+  $("st-count").textContent=`${D.T.step} ${i+1} ${D.T.of} ${D.S.length}`;
+  $("track").innerHTML=D.S.map((x,k)=>`<button type="button" class="stp ${k===i?"now":seen.has(k)?"seen":""}" data-k="${k}" ${k===i?'aria-current="step"':""}><span class="n">${k+1}</span><span class="l">${x.short}</span></button>`).join("");
+  $("p-count").textContent=`${D.T.step} ${i+1} / ${D.S.length}`;
   $("p-badge").textContent=s.badge[0];$("p-badge").className="badge "+s.badge[1];
   $("p-title").textContent=s.title;$("p-story").textContent=s.story;
-  $("p-key").className="key "+mode;$("p-rk").textContent=sin?T.sin:T.con;$("p-res").textContent=s[mode];
-  $("p-demo").textContent=s.demo;$("p-link").href=L[s.link][0];$("p-link").textContent=L[s.link][1];
+  $("p-key").className="key "+mode;$("p-rk").textContent=sin?D.T.sin:D.T.con;$("p-res").textContent=s[mode];
+  $("p-demo").textContent=s.demo;$("p-link").href=D.L[s.link][0];$("p-link").textContent=D.L[s.link][1];
   $("prev").disabled=i===0;
-  $("next").textContent=i===S.length-1?T.restart:`${T.next}${S[i+1].short} →`;
-  $("learn").innerHTML=LEARN.map(([k,t])=>`<li class="${seen.has(k)||(k===5&&seen.has(6))?"done":""}">${t}</li>`).join("");
+  $("next").textContent=i===D.S.length-1?D.T.restart:`${D.T.next}${D.S[i+1].short} →`;
+  $("learn").innerHTML=D.LEARN.map(([k,t])=>`<li class="${seen.has(k)||(k===5&&seen.has(6))?"done":""}">${t}</li>`).join("");
   if(anim) animate(sin&&!!s.lostSin, !!s.hubOnly);
 }
-function go(k){i=(k+S.length)%S.length;seen.add(i);render();}
+function go(k){i=(k+D.S.length)%D.S.length;seen.add(i);render();}
 $("next").onclick=()=>go(i+1);
 $("prev").onclick=()=>{if(i>0)go(i-1);};
-$("replay").onclick=()=>animate(mode==="sin"&&!!S[i].lostSin,!!S[i].hubOnly);
+$("replay").onclick=()=>animate(mode==="sin"&&!!D.S[i].lostSin,!!D.S[i].hubOnly);
 document.addEventListener("click",e=>{const b=e.target.closest("[data-k]");if(b)go(+b.dataset.k);});
+$("l-en").onclick=()=>setLang("en");
+$("l-es").onclick=()=>setLang("es");
 $("m-con").onclick=()=>{mode="con";render();};
 $("m-sin").onclick=()=>{mode="sin";render();};
 document.addEventListener("keydown",e=>{
@@ -424,10 +565,11 @@ document.addEventListener("keydown",e=>{
   else if(e.key==="r"||e.key==="R")$("replay").click();
 });
 const q=new URLSearchParams(location.search);
-if(q.has("step")){const n=+q.get("step")-1;if(n>=0&&n<S.length){i=n;for(let k=0;k<=i;k++)seen.add(k);}}
+if(q.has("step")){const n=+q.get("step")-1;if(n>=0&&n<D.S.length){i=n;for(let k=0;k<=i;k++)seen.add(k);}}
 if(q.has("step")||q.has("mode"))mode=q.get("mode")==="basic"?"sin":"con";
+applyStatic();
 render(false);
-setTimeout(()=>animate(mode==="sin"&&!!S[i].lostSin,!!S[i].hubOnly),400);
+setTimeout(()=>animate(mode==="sin"&&!!D.S[i].lostSin,!!D.S[i].hubOnly),400);
 </script>
 </body>
 </html>
