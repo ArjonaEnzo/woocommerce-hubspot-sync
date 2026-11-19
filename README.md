@@ -196,6 +196,9 @@ Everything below was found by running the sync, not by reading docs. Full log: [
   revenue; sort it in the report editor if you rebuild it.
 - The backfill holds all orders in memory to compute customer totals — fine for thousands of orders,
   not for millions (that would need a customer-level pass first).
+- n8n keeps its own data (workflows, executions) in SQLite, which is fine for one local instance. In
+  production it would run on Postgres, plus queue mode with workers once webhook volume grows. The sync
+  itself needs no database: HubSpot's unique keys make every write idempotent.
 - Local demo only, all ports bound to `127.0.0.1`. Before exposing it anywhere: n8n exposes the webhook
   secret to workflows via `$env`; HTTP without TLS, so n8n runs with `N8N_SECURE_COOKIE=false`; the
   must-use plugin lets WordPress deliver webhooks to the `n8n` host on port 5678 (normally refused); and the
