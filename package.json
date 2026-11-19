@@ -10,7 +10,7 @@
   },
   "scripts": {
     "test": "node --test",
-    "typecheck": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
     "check": "npm run typecheck && npm test",
     "build:workflows": "node scripts/build-workflows.mjs"
   },

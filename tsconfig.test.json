@@ -1,0 +1,8 @@
+{
+  // Tests dig into fixtures and responses freely (a wrong path fails the assertion anyway);
+  // the library itself keeps the strict settings.
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noUncheckedIndexedAccess": false, "strictNullChecks": false },
+  "include": ["src/**/*.test.ts"],
+  "exclude": []
+}
