@@ -1,5 +1,5 @@
 // Tiny helpers to declare n8n workflows in code (built by scripts/build-workflows.mjs).
-// Node parameter shapes match n8n 2.47 (see docker-compose.yml for the pinned image).
+// Node parameter shapes match n8n 2.48 (see docker-compose.yml for the pinned image).
 
 export const IDS = {
   hubspotRequest: 'wfHubspotReq0001',

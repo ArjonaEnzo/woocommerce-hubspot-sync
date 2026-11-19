@@ -50,7 +50,7 @@ services:
       - ./data:/data:ro
 
   n8n:
-    image: n8nio/n8n:2.47.7
+    image: n8nio/n8n:2.48.5
     restart: unless-stopped
     ports: ["127.0.0.1:5679:5678"] # 5679 on the host avoids clashing with another local n8n
     environment:
