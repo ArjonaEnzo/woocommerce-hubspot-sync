@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { generateOrders } from './generator.js';
 import { validateCustomer } from './validate.ts';
-import { companyDomain } from './mapping.js';
+import { companyDomain } from './mapping.ts';
 
 const catalog = JSON.parse(readFileSync(new URL('../../data/catalog.json', import.meta.url)));
 const now = new Date('2026-11-15T12:00:00Z');

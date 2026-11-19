@@ -4,9 +4,10 @@ import { readFileSync } from 'node:fs';
 import {
   STAGE_BY_STATUS, companyDomain, planCompanies, buildContactInput, buildProductInputs,
   buildDealInput, buildLineItemInputs, aggregateCustomer,
-} from './mapping.js';
+} from './mapping.ts';
+import type { WooOrder } from './types.ts';
 
-const fixture = (name) => JSON.parse(readFileSync(new URL(`./fixtures/${name}.json`, import.meta.url)));
+const fixture = (name: string): WooOrder => JSON.parse(readFileSync(new URL(`./fixtures/${name}.json`, import.meta.url), 'utf8'));
 const completed = fixture('order-completed-company');
 const partial = fixture('order-guest-partial-refund');
 const refunded = fixture('order-refunded');
@@ -116,7 +117,7 @@ test('buildLineItemInputs returns one stable upsert input per order item', () =>
 });
 
 test('aggregateCustomer counts paid orders and nets refunds', () => {
-  const o = (id, status, total, refund, date) => ({
+  const o = (id: number, status: string, total: string, refund: string | 0, date: string): WooOrder => ({
     id, status, total, date_created_gmt: date, refunds: refund ? [{ total: `-${refund}` }] : [],
   });
   const agg = aggregateCustomer([

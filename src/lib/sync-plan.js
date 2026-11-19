@@ -6,7 +6,7 @@ import { chunk } from './retry.ts';
 import {
   buildContactInput, planCompanies, companyDomain, buildProductInputs, buildDealInput, buildLineItemInputs,
   aggregateCustomer,
-} from './mapping.js';
+} from './mapping.ts';
 
 const BATCH = 100;
 const skip = (label) => ({ skip: true, label });
