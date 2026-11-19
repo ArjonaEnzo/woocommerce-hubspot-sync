@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>WooCommerce → HubSpot walkthrough</title>
+<meta name="description" content="Interactive 7-step walkthrough of the WooCommerce → n8n → HubSpot sync: what happens on each order event, with and without idempotent sync.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: course workbench. Sidebar = lesson index + links; center = isometric system scene + stepper; right = step narrative. */
+:root{
+  --bg:#E9EEE8; --surface:#FBFCFA; --sunk:#F2F5F1; --ink:#17211C; --muted:#5B6A61; --line:#D3DCD4; --grid:#DCE4DC;
+  --accent:#2E7A4E; --accent-soft:#DCEEE2; --warn:#AE6F1C; --warn-soft:#F6E8D2; --bad:#B4433A; --bad-soft:#F5DEDB;
+  --info:#2F5F9E; --info-soft:#E0E9F6;
+  --woo-top:#B9A3DA; --woo-l:#8E73BC; --woo-r:#A68BCC;
+  --n8n-top:#4A5A52; --n8n-l:#2B3832; --n8n-r:#3A4842;
+  --hub-top:#F2A07F; --hub-l:#D9714B; --hub-r:#E88A63;
+  --plat-top:#F7F9F6; --plat-l:#CBD5CC; --plat-r:#DCE4DD;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1411; --surface:#17201B; --sunk:#121915; --ink:#E4EBE5; --muted:#93A399; --line:#2A352E; --grid:#1C2620;
+  --accent:#62C08A; --accent-soft:#1D3527; --warn:#E3A650; --warn-soft:#3A2D18; --bad:#E57A70; --bad-soft:#3E211E;
+  --info:#7FA8E3; --info-soft:#1C2A3E;
+  --plat-top:#26302A; --plat-l:#151C18; --plat-r:#1D2620; --n8n-top:#5E7268; --n8n-l:#34433B; --n8n-r:#475950; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1411; --surface:#17201B; --sunk:#121915; --ink:#E4EBE5; --muted:#93A399; --line:#2A352E; --grid:#1C2620;
+  --accent:#62C08A; --accent-soft:#1D3527; --warn:#E3A650; --warn-soft:#3A2D18; --bad:#E57A70; --bad-soft:#3E211E;
+  --info:#7FA8E3; --info-soft:#1C2A3E;
+  --plat-top:#26302A; --plat-l:#151C18; --plat-r:#1D2620; --n8n-top:#5E7268; --n8n-l:#34433B; --n8n-r:#475950; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:14.5px/1.55 var(--f-body)}
+a{color:var(--info)}
+.top{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;padding-block:12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));border-bottom:1px solid var(--line);background:var(--surface)}
+.brand{font:700 17px/1 var(--f-display);display:flex;align-items:center;gap:8px}
+.brand i{width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,var(--woo-l),var(--hub-l));display:inline-block}
+.switch{display:inline-grid;grid-template-columns:1fr 1fr;background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
+.switch button{font:600 13px/1.2 var(--f-body);border:0;border-radius:7px;padding:7px 11px;background:transparent;color:var(--muted);cursor:pointer}
+.switch button[aria-pressed="true"].con{background:var(--accent);color:var(--surface)}
+.switch button[aria-pressed="true"].sin{background:var(--bad);color:var(--surface)}
+button:focus-visible,a:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+
+.wrap{max-width:1500px;margin:0 auto;padding-block:16px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;grid-template-columns:230px minmax(0,1fr) 330px;gap:14px;align-items:start}
+@media (max-width:1240px){.wrap{grid-template-columns:minmax(0,1fr) 330px}.side{grid-column:1/-1}}
+@media (max-width:880px){.wrap{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.eyebrow{font:500 11.5px/1.2 var(--f-mono);letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+
+/* sidebar */
+.side{display:grid;gap:14px;min-width:0}
+@media (max-width:1240px){.side{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}}
+.toc{padding:14px;display:grid;gap:10px}
+.mod{display:grid;gap:3px}
+.mod .mh{font:600 13px/1.3 var(--f-body);display:flex;justify-content:space-between;gap:6px;padding:4px 2px}
+.mod .mh span:last-child{font:500 11.5px/1.3 var(--f-mono);color:var(--muted)}
+.les{all:unset;cursor:pointer;display:flex;gap:8px;align-items:center;padding:6px 8px;border-radius:8px;font-size:13.5px;color:var(--muted)}
+.les:hover{background:var(--sunk)}
+.les .b{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--line);flex:none}
+.les.seen .b{background:var(--accent-soft);border-color:var(--accent)}
+.les.now{background:var(--accent-soft);color:var(--ink);font-weight:600}
+.les.now .b{background:var(--accent);border-color:var(--accent)}
+.les:focus-visible{outline:2px solid var(--info)}
+.links{padding:14px;display:grid;gap:8px}
+.links a{display:flex;justify-content:space-between;gap:8px;font:500 13px/1.3 var(--f-mono);text-decoration:none;color:var(--ink);padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--sunk)}
+.links a span:last-child{color:var(--muted)}
+.links a:hover{border-color:var(--info)}
+.links .note{font-size:12.5px;color:var(--muted);margin:0}
+
+/* center */
+.center{display:grid;gap:14px;min-width:0}
+.lesson-head{padding:14px 16px;display:grid;gap:10px}
+.crumb{font:500 12px/1 var(--f-mono);color:var(--muted)}
+.lh-row{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start}
+h1{font:700 clamp(22px,2.6vw,30px)/1.15 var(--f-display);margin:0;text-wrap:balance}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font:500 12px/1 var(--f-mono);padding:6px 9px;border-radius:999px;border:1px solid var(--line);background:var(--sunk);color:var(--muted);white-space:nowrap}
+.metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+@media (max-width:640px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.metric{background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0}
+.metric .k{font:500 10.5px/1.2 var(--f-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.metric .v{font:600 17px/1.3 var(--f-mono);font-variant-numeric:tabular-nums;margin-top:3px;overflow-wrap:anywhere}
+.metric.bad .v{color:var(--bad)} .metric.good .v{color:var(--accent)}
+.metric .v.flash{animation:flash .7s ease}
+@keyframes flash{0%{transform:translateY(-4px);opacity:.2}100%{transform:none;opacity:1}}
+
+.scene-card{padding:10px;display:grid;gap:8px}
+.scene-tools{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:2px 4px}
+.trigger{font:500 12.5px/1.3 var(--f-mono);color:var(--muted)}
+.trigger b{color:var(--ink);font-weight:500;background:var(--info-soft);padding:3px 7px;border-radius:6px}
+.tbtn{font:600 12.5px/1 var(--f-body);padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.scene-scroll{overflow-x:auto;border-radius:10px}
+.scene{position:relative;aspect-ratio:900/480;min-width:560px;max-width:100%;border-radius:10px;border:1px solid var(--line);
+  background-color:var(--sunk);
+  background-image:linear-gradient(26.57deg,var(--grid) 1px,transparent 1px),linear-gradient(-26.57deg,var(--grid) 1px,transparent 1px);
+  background-size:44px 22px}
+@media (max-width:640px){.scene{max-width:none}}
+.scene svg{position:absolute;inset:0;width:100%;height:100%}
+.ov{position:absolute;transform:translate(-50%,-50%);max-width:34%;display:grid;gap:4px;justify-items:center;text-align:center;pointer-events:none}
+.tagname{font:600 12.5px/1 var(--f-mono);background:var(--surface);border:1.5px solid var(--ink);border-radius:999px;padding:6px 10px;white-space:nowrap;display:flex;gap:6px;align-items:center}
+.tagname i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.bubble{font:12px/1.35 var(--f-mono);background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:6px 9px;box-shadow:0 4px 14px rgba(20,30,25,.08);overflow-wrap:anywhere}
+.bubble.good{border-color:var(--accent)} .bubble.bad{border-color:var(--bad);color:var(--bad)} .bubble.warn{border-color:var(--warn)}
+.bubble b{font-weight:600}
+.pill{display:inline-block;padding:1px 6px;border-radius:5px;font-size:11px;margin:1px 2px}
+.p-paid{background:var(--info-soft);color:var(--info)} .p-won{background:var(--accent-soft);color:var(--accent)} .p-ref{background:var(--warn-soft);color:var(--warn)} .p-dup{background:var(--bad-soft);color:var(--bad)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font:12px/1 var(--f-mono);color:var(--muted);padding:2px 4px}
+.legend span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:-1px;background:var(--c)}
+
+.stepper{padding:14px 16px;display:grid;gap:10px}
+.st-row{display:flex;justify-content:space-between;gap:8px}
+.track{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:0;overflow-x:auto}
+.stp{all:unset;cursor:pointer;display:grid;justify-items:center;gap:6px;position:relative;padding:0 2px;min-width:64px}
+.stp::before{content:"";position:absolute;top:14px;left:-50%;right:50%;height:2px;background:var(--line);z-index:0}
+.stp:first-child::before{display:none}
+.stp.seen::before,.stp.now::before{background:var(--accent)}
+.stp .n{position:relative;z-index:1;width:30px;height:30px;border-radius:50%;border:1.5px solid var(--line);background:var(--surface);display:grid;place-items:center;font:600 13px/1 var(--f-mono);color:var(--muted)}
+.stp.seen .n{border-color:var(--accent);color:var(--accent)}
+.stp.now .n{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.stp .l{font-size:12px;line-height:1.25;text-align:center;color:var(--muted)}
+.stp.now .l{color:var(--ink);font-weight:600}
+.stp:focus-visible .n{outline:2px solid var(--info);outline-offset:2px}
+
+/* right panel */
+.right{display:grid;gap:14px;min-width:0}
+.panel{padding:16px;display:grid;gap:12px}
+.ph{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.badge{font:600 11px/1 var(--f-mono);text-transform:uppercase;letter-spacing:.05em;padding:5px 8px;border-radius:6px;background:var(--info-soft);color:var(--info)}
+.badge.problem{background:var(--bad-soft);color:var(--bad)} .badge.rule{background:var(--accent-soft);color:var(--accent)}
+h2{font:700 21px/1.2 var(--f-display);margin:0;text-wrap:balance}
+.story{margin:0}
+.key{border-radius:10px;padding:10px 12px;display:grid;gap:4px}
+.key.con{background:var(--accent-soft)} .key.sin{background:var(--bad-soft)}
+.key .rk{font:600 11px/1.2 var(--f-mono);text-transform:uppercase;letter-spacing:.05em}
+.key.con .rk{color:var(--accent)} .key.sin .rk{color:var(--bad)}
+.key p{margin:0}
+.demo{border:1px dashed var(--line);border-radius:10px;padding:10px 12px;font:12.5px/1.45 var(--f-mono);display:grid;gap:6px}
+.demo .rk{font:600 11px/1.2 var(--f-mono);text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.demo a{font-weight:600}
+.nav{display:flex;gap:8px}
+.btn{flex:1;font:600 13.5px/1.25 var(--f-body);padding:10px 11px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn:disabled{opacity:.4;cursor:default}
+.keys{font:12px/1.4 var(--f-mono);color:var(--muted)}
+kbd{font:inherit;border:1px solid var(--line);border-radius:4px;padding:0 4px;background:var(--sunk)}
+.learn{padding:14px 16px;display:grid;gap:8px}
+.learn ul{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+.learn li{display:grid;grid-template-columns:18px minmax(0,1fr);gap:8px;font-size:13.5px;line-height:1.4;color:var(--muted)}
+.learn li::before{content:"";width:15px;height:15px;border-radius:4px;border:1.5px solid var(--line);margin-top:2px}
+.learn li.done{color:var(--ink)}
+.learn li.done::before{background:var(--accent);border-color:var(--accent);box-shadow:inset 0 0 0 3px var(--surface)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important}}
+</style>
+<style>body{margin:0}</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand"><i></i>Woo → HubSpot <span class="eyebrow" style="margin-left:6px">7-step walkthrough</span></div>
+  <div class="switch" role="group" aria-label="Compare">
+    <button type="button" id="m-con" class="con" aria-pressed="true">With this sync</button>
+    <button type="button" id="m-sin" class="sin" aria-pressed="false">Basic connector</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <aside class="side">
+    <nav class="card toc" aria-label="Steps" id="toc"></nav>
+    <section class="card links">
+      <div class="eyebrow">See it for real</div>
+      <a href="../screenshots/02-pipeline.jpg"><span>Deal pipeline</span><span>screenshot</span></a>
+      <a href="../screenshots/06-refund-hubspot.jpg"><span>Refunded deal #267</span><span>screenshot</span></a>
+      <a href="../screenshots/03-contact-vip.jpg"><span>VIP / at-risk contact</span><span>screenshot</span></a>
+      <a href="../screenshots/04-error-ticket.jpg"><span>Error ticket</span><span>screenshot</span></a>
+      <a href="../screenshots/01-dashboard.jpg"><span>Revenue dashboard</span><span>screenshot</span></a>
+      <a href="https://github.com/ArjonaEnzo/woocommerce-hubspot-sync"><span>Source code</span><span>GitHub ↗</span></a>
+      <p class="note">Screenshots come from a real HubSpot developer test account with generated data. Lucía and Martín are the illustrative story of this page.</p>
+    </section>
+  </aside>
+
+  <main class="center">
+    <section class="card lesson-head">
+      <div class="crumb" id="crumb"></div>
+      <div class="lh-row">
+        <h1 id="h1"></h1>
+        <div class="chips"><span class="chip">Yerba mate shop</span><span class="chip">WooCommerce</span><span class="chip">n8n</span><span class="chip">HubSpot</span></div>
+      </div>
+      <div class="metrics" id="metrics"></div>
+    </section>
+
+    <section class="card scene-card" aria-label="System scene">
+      <div class="scene-tools">
+        <span class="trigger">Trigger: <b id="trigger"></b></span>
+        <button type="button" class="tbtn" id="replay">↻ Replay</button>
+      </div>
+      <div class="scene-scroll">
+        <div class="scene" id="scene">
+          <svg viewBox="0 0 900 480" aria-hidden="true" id="svg"></svg>
+          <div class="ov" style="left:22.2%;top:21%"><span class="tagname"><i style="background:var(--woo-l)"></i>Woo store</span><div class="bubble" id="b-woo"></div></div>
+          <div class="ov" style="left:50%;top:93%;max-width:44%"><div class="bubble" id="b-bridge"></div></div>
+          <div class="ov" style="left:50%;top:51%"><span class="tagname" id="t-bridge"></span></div>
+          <div class="ov" style="left:77.8%;top:21%;max-width:38%"><span class="tagname"><i style="background:var(--hub-l)"></i>HubSpot</span><div class="bubble" id="b-hub"></div></div>
+        </div>
+      </div>
+      <div class="legend"><span style="--c:var(--accent)">data in transit</span><span style="--c:var(--bad)">data lost or wrong</span><span style="--c:var(--hub-l)">rule inside HubSpot</span></div>
+    </section>
+
+    <section class="card stepper">
+      <div class="st-row"><span class="eyebrow">In this walkthrough</span><span class="eyebrow" id="st-count"></span></div>
+      <div class="track" id="track"></div>
+    </section>
+  </main>
+
+  <aside class="right">
+    <section class="card panel" aria-live="polite">
+      <div class="ph"><span class="eyebrow" id="p-count"></span><span class="badge" id="p-badge"></span></div>
+      <h2 id="p-title"></h2>
+      <p class="story" id="p-story"></p>
+      <div class="key" id="p-key"><div class="rk" id="p-rk"></div><p id="p-res"></p></div>
+      <div class="demo"><div class="rk">In the real run (HubSpot test account)</div><div id="p-demo"></div><a id="p-link"></a></div>
+      <div class="nav"><button class="btn" id="prev" type="button">← Back</button><button class="btn primary" id="next" type="button"></button></div>
+      <div class="keys"><kbd>←</kbd> <kbd>→</kbd> steps · <kbd>C</kbd> compare · <kbd>R</kbd> replay</div>
+    </section>
+    <section class="card learn">
+      <div class="eyebrow">You will see</div>
+      <ul id="learn"></ul>
+    </section>
+  </aside>
+</div>
+
+<script>
+const L = {
+  board:["../screenshots/02-pipeline.jpg","Screenshot: the deal pipeline →"],
+  d267:["../screenshots/06-refund-hubspot.jpg","Screenshot: deal #267 moved Paid → Refunded →"],
+  tickets:["../screenshots/04-error-ticket.jpg","Screenshot: an integration error ticket →"],
+  contacts:["../screenshots/03-contact-vip.jpg","Screenshot: VIP contact with a win-back task →"],
+  dash:["../screenshots/01-dashboard.jpg","Screenshot: the revenue dashboard →"],
+};
+const P = (c,t)=>`<span class="pill p-${c}">${t}</span>`;
+const MODS = [["01. Sync",[0,1]],["02. Protect the data",[2,3,4]],["03. Use the data",[5,6]]];
+const S = [
+ {short:"First order", badge:["Happy path",""], trigger:"order.created", link:"board",
+  title:"Lucía places her first order",
+  story:"Lucía buys 2 kg of yerba mate for USD 48. She pays by card and the order sits in processing.",
+  con:"The sync looks Lucía up by email (new, so it creates her), links her company and creates deal #301 in Paid. Sales sees her within seconds.",
+  sin:"On the happy path any connector works: it creates the deal and that's it. The difference starts at step 2.",
+  demo:"217 Woo orders → 217 deals. 128 contacts and 9 companies created automatically.",
+  woo:"<b>#301</b> · Lucía · $48<br>"+P("paid","processing"),
+  br:{con:["good","✓ #301 exists? no → create<br>✓ data ok · processing → Paid"],sin:["warn","! creates the deal, no questions asked"]},
+  hub:{con:["good","<b>#301</b> Lucía $48 "+P("paid","Paid")+"<br>new contact · segment New"],sin:["","<b>#301</b> Lucía $48 "+P("paid","Paid")]},
+  m:{con:[1,0,48,0,"New"],sin:[1,0,48,0,"—"]}},
+ {short:"Delivered", badge:["Update",""], trigger:"order.updated", link:"dash",
+  title:"The order is delivered",
+  story:"The parcel arrives and the store marks the order completed. It is not a new order: it is the same one, changed.",
+  con:"The sync finds deal #301 by woo_order_id and moves it to Closed won. The revenue dashboard goes up on its own.",
+  sin:"A basic connector only listens for new orders. The deal stays in Paid forever and Monday's report doesn't match the store.",
+  demo:"110 deals in Closed won, USD 49,629.44 on the HubSpot dashboard.",
+  woo:"<b>#301</b> · $48<br>"+P("won","completed"),
+  br:{con:["good","✓ #301 exists? yes → update<br>✓ completed → Closed won"],sin:["bad","✕ not a new order → ignored"]},
+  hub:{con:["good","<b>#301</b> $48 "+P("won","Closed won")],sin:["warn","<b>#301</b> $48 "+P("paid","Paid")+"<br>out of date"]},
+  m:{con:[1,0,48,0,"New"],sin:[1,0,48,0,"—"]}, lostSin:true},
+ {short:"Duplicate webhook", badge:["Problem","problem"], trigger:"order.updated (retried)", link:"board",
+  title:"Woo sends the same event twice",
+  story:"It happens all the time: the server is slow, Woo gets no acknowledgement and retries. The same event for order #301 arrives again.",
+  con:"Idempotency: the sync upserts by the unique woo_order_id, so the deal is updated, not recreated. Still one deal; the sale counts once.",
+  sin:"The connector creates one deal per event. Now there are two #301 deals and revenue shows USD 96 for a USD 48 sale.",
+  demo:"0 duplicate woo_order_id across 217 deals, including bursts of 43 concurrent webhooks. verify-hubspot.mjs checks it on every run.",
+  woo:"<b>#301</b> · $48<br>"+P("won","completed")+" event ×2",
+  br:{con:["good","✓ #301 exists? yes → same deal<br>nothing to create"],sin:["bad","✕ creates another identical deal"]},
+  hub:{con:["good","<b>#301</b> $48 "+P("won","Closed won")+"<br>still one deal"],sin:["bad","<b>#301</b> "+P("paid","Paid")+" <b>#301</b> "+P("dup","duplicate")+"<br>revenue $96"]},
+  m:{con:[1,0,48,0,"New"],sin:[2,1,96,0,"—"]}},
+ {short:"Refund", badge:["Problem","problem"], trigger:"order.updated → refunded", link:"d267",
+  title:"Lucía asks for her money back",
+  story:"The yerba arrived damp. Support refunds the USD 48 and the order becomes refunded in Woo.",
+  con:"The deal moves to Refunded with amount 0 and refund_amount 48. Revenue drops, and nobody in sales calls her this week to upsell.",
+  sin:"HubSpot still shows the sale, twice. A sales rep calls her with a bundle offer right after her complaint.",
+  demo:"Tested live on 2026-11-18: Woo order #267 refunded → its existing deal (created 2026-11-16) moved Paid → Refunded, amount 0, refund_amount 16.",
+  woo:"<b>#301</b> · refund $48<br>"+P("ref","refunded"),
+  br:{con:["good","✓ #301 exists? yes → update<br>✓ refunded → Refunded, amount 0"],sin:["bad","✕ not a new order → ignored"]},
+  hub:{con:["good","<b>#301</b> $0 "+P("ref","Refunded")+"<br>refund_amount 48"],sin:["bad","<b>#301</b> $48 ×2 "+P("paid","Paid")+"<br>sales calls her anyway"]},
+  m:{con:[1,0,0,0,"New"],sin:[2,1,96,0,"—"]}, lostSin:true},
+ {short:"Dirty data", badge:["Dirty data","problem"], trigger:"order.created", link:"tickets",
+  title:"Another customer mistypes his email",
+  story:"Martín buys USD 35 and types martin@gmail, without the .com. Woo accepts it; HubSpot rejects that email.",
+  con:"The sync catches it before sending. The deal still syncs (without a contact) and a ticket names the order and the reason. The sale isn't lost and the rest keeps running.",
+  sin:"HubSpot rejects the request and the connector fails silently. Martín's sale doesn't exist in the CRM and nobody notices.",
+  demo:"9 orders with an unusable email synced as deals + tickets; 9 contacts flagged Needs review for bad phone or country.",
+  woo:"<b>#305</b> · Martín · $35<br>martin@gmail",
+  br:{con:["warn","✓ #305 exists? no → create<br>✕ invalid email → open ticket"],sin:["bad","✕ HubSpot returns 400, flow stops"]},
+  hub:{con:["warn","<b>#305</b> $35 "+P("paid","Paid")+"<br>Ticket: invalid email on #305"],sin:["bad","#305 doesn't exist<br>nobody notices"]},
+  m:{con:[2,0,35,1,"New"],sin:[2,1,96,0,"—"]}, lostSin:true},
+ {short:"Comes back", badge:["Business rule","rule"], trigger:"order.created × 2", link:"contacts",
+  title:"Lucía comes back and buys twice more",
+  story:"Her replacement arrived fine and she liked it. Within a month she places two orders: USD 62 and USD 54.",
+  con:"The sync creates both deals and writes her totals (orders, revenue) to the contact. HubSpot workflow W1 uses them to mark her VIP and give the rep a task.",
+  sin:"Two more deals show up, but no totals. Nobody knows she's a loyal customer; she gets the same emails as everyone else.",
+  demo:"W1: 67 contacts → Customer. New 39 / Repeat 12 / VIP 16, with 0 segments contradicting the synced totals.",
+  woo:"<b>#318</b> $62 · <b>#334</b> $54<br>"+P("won","completed"),
+  br:{con:["good","✓ create #318 and #334<br>✓ totals: 3 orders, USD 164"],sin:["warn","! creates two deals, no totals"]},
+  hub:{con:["good",P("won","Closed won")+" ×2<br>Lucía → <b>VIP</b> · task: offer a subscription"],sin:["","2 more deals in "+P("paid","Paid")+"<br>Lucía has no segment"]},
+  m:{con:[4,0,151,1,"VIP"],sin:[4,1,212,0,"—"]}},
+ {short:"Goes quiet", badge:["Business rule","rule"], trigger:"daily check inside HubSpot (W2)", link:"contacts", hubOnly:true,
+  title:"90 days pass without a purchase",
+  story:"No store event this time. That's the point: nothing happens. Lucía stopped buying.",
+  con:"Workflow W2 checks the last order date the sync wrote. Lucía becomes At risk and the rep gets a win-back task.",
+  sin:"Without a last order date in HubSpot no rule is possible. Lucía drifts to a competitor and nobody notices.",
+  demo:"W2: 39 customers with no purchase in 90 days → At risk + win-back task.",
+  woo:"no orders from Lucía<br>for 90 days",
+  br:{con:["","nothing passes here<br>the data arrived earlier"],sin:["","nothing passes here<br>it never sent the date"]},
+  hub:{con:["warn","Lucía · "+P("won","VIP")+P("ref","At risk")+"<br>task: call her this week"],sin:["bad","Lucía is gone<br>and nobody noticed"]},
+  m:{con:[4,0,151,1,"VIP · At risk"],sin:[4,1,212,0,"—"]}},
+];
+const LEARN=[[0,"What the sync does when an order comes in"],[1,"Why updating matters as much as creating"],[2,"Idempotency: the same event twice never duplicates a sale"],[3,"How a refund corrects the pipeline"],[4,"How dirty data is handled without stopping the rest"],[5,"How HubSpot turns synced data into tasks for sales"]];
+const MK=["Deals","Duplicates","Sales USD","Tickets","Lucía's segment"];
+const T={con:"With this sync",sin:"With a basic connector",bridgeCon:"n8n sync",bridgeSin:"Basic connector",step:"Step",of:"of",restart:"Back to start ↺",next:"Next: "};
+
+/* ---------- isometric scene ---------- */
+const NS="http://www.w3.org/2000/svg";
+const svg=document.getElementById("svg");
+const el=(t,a,p=svg)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);p.appendChild(e);return e;};
+const pts=a=>a.map(p=>p.join(",")).join(" ");
+function slab(cx,cy,w,h,t,top,l,r,p=svg,stroke="var(--line)"){
+  const g=el("g",{},p);
+  el("polygon",{points:pts([[cx-w,cy],[cx,cy+h],[cx,cy+h+t],[cx-w,cy+t]]),fill:l,stroke,"stroke-width":1},g);
+  el("polygon",{points:pts([[cx,cy+h],[cx+w,cy],[cx+w,cy+t],[cx,cy+h+t]]),fill:r,stroke,"stroke-width":1},g);
+  el("polygon",{points:pts([[cx,cy-h],[cx+w,cy],[cx,cy+h],[cx-w,cy]]),fill:top,stroke,"stroke-width":1},g);
+  return g;
+}
+const N={woo:[200,250],br:[450,320],hub:[700,250]};
+// wires (behind)
+const p1=el("path",{d:`M${N.woo[0]},${N.woo[1]} L${N.br[0]},${N.br[1]}`,stroke:"var(--muted)","stroke-width":2,"stroke-dasharray":"6 6",fill:"none",opacity:.5});
+const p2=el("path",{d:`M${N.br[0]},${N.br[1]} L${N.hub[0]},${N.hub[1]}`,stroke:"var(--muted)","stroke-width":2,"stroke-dasharray":"6 6",fill:"none",opacity:.5});
+// platforms
+for(const k in N){const[x,y]=N[k];slab(x,y,95,47,16,"var(--plat-top)","var(--plat-l)","var(--plat-r)");}
+// store: box + awning
+(function(){const[x,y]=N.woo;slab(x,y-26,42,21,26,"var(--woo-top)","var(--woo-l)","var(--woo-r)",svg,"none");
+  slab(x,y-58,48,24,6,"var(--surface)","var(--woo-l)","var(--woo-r)",svg,"none");
+  el("polygon",{points:pts([[x-30,y-12],[x-14,y-4],[x-14,y+12],[x-30,y+4]]),fill:"var(--surface)",opacity:.85});})();
+// bridge: hex-ish block with ports
+const brG=el("g",{});
+(function(){const[x,y]=N.br;slab(x,y-20,36,18,20,"var(--n8n-top)","var(--n8n-l)","var(--n8n-r)",brG,"none");
+  [[-22,-4],[22,-4]].forEach(([dx,dy])=>el("circle",{cx:x+dx,cy:y+dy+ -14,r:4,fill:"var(--accent)"},brG));})();
+// hub: stacked cards
+const hubG=el("g",{});
+(function(){const[x,y]=N.hub;[0,1,2].forEach(i=>slab(x,y-14-i*14,46,23,8,"var(--hub-top)","var(--hub-l)","var(--hub-r)",hubG,"var(--surface)"));})();
+// pulse ring for hub-only rules
+const ring=el("ellipse",{cx:N.hub[0],cy:N.hub[1],rx:60,ry:30,fill:"none",stroke:"var(--hub-l)","stroke-width":3,opacity:0});
+// packet
+const pk=el("g",{opacity:0});
+el("circle",{r:13,fill:"var(--accent-soft)"},pk);const pkc=el("circle",{r:7,fill:"var(--accent)"},pk);
+const pkHalo=pk.firstChild;
+
+let raf=null;
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+function animate(lost,hubOnly){
+  cancelAnimationFrame(raf);pk.setAttribute("opacity",0);ring.setAttribute("opacity",0);
+  if(reduce) return;
+  const t0=performance.now(),D=750;
+  pkc.setAttribute("fill",lost?"var(--accent)":"var(--accent)");pkHalo.setAttribute("fill","var(--accent-soft)");
+  function frame(now){
+    const t=(now-t0)/D;
+    if(hubOnly){const k=Math.min(t/1.6,1);ring.setAttribute("opacity",(1-k).toFixed(2));ring.setAttribute("rx",60+k*60);ring.setAttribute("ry",30+k*30);if(k<1)raf=requestAnimationFrame(frame);return;}
+    let path,u;
+    if(t<1){path=p1;u=t;}
+    else if(t<2){path=p2;u=t-1;
+      if(lost){pkc.setAttribute("fill","var(--bad)");pkHalo.setAttribute("fill","var(--bad-soft)");
+        if(u>.35){const f=Math.min((u-.35)/.5,1);const q=p2.getPointAtLength(p2.getTotalLength()*.35);pk.setAttribute("transform",`translate(${q.x},${q.y+f*30})`);pk.setAttribute("opacity",(1-f).toFixed(2));if(f<1)raf=requestAnimationFrame(frame);return;}}
+    } else {pk.setAttribute("opacity",0);return;}
+    const q=path.getPointAtLength(path.getTotalLength()*u);
+    pk.setAttribute("transform",`translate(${q.x},${q.y-6})`);pk.setAttribute("opacity",1);
+    raf=requestAnimationFrame(frame);
+  }
+  raf=requestAnimationFrame(frame);
+}
+
+
+/* ---------- state ---------- */
+let i=0,mode="con";const seen=new Set([0]);
+try{const s=JSON.parse(localStorage.getItem("wh-walk")||"null");if(s&&s.i>=0&&s.i<S.length){i=s.i;mode=s.mode==="sin"?"sin":"con";for(let k=0;k<=i;k++)seen.add(k);}}catch(e){}
+const $=id=>document.getElementById(id);let prevM=null;
+
+function render(anim=true){
+  const s=S[i],sin=mode==="sin";
+  try{localStorage.setItem("wh-walk",JSON.stringify({i,mode}));}catch(e){}
+  $("m-con").setAttribute("aria-pressed",!sin);$("m-sin").setAttribute("aria-pressed",sin);
+  const mod=MODS.find(m=>m[1].includes(i));
+  $("crumb").textContent=`${mod[0]} / ${T.step} ${i+1} ${T.of} ${S.length}`;
+  $("h1").textContent=s.title;
+  const m=s.m[mode];
+  $("metrics").innerHTML=m.map((v,k)=>{const cls=k===1?(v>0?"bad":"good"):"";const ch=prevM&&prevM[k]!==v;return `<div class="metric ${cls}"><div class="k">${MK[k]}</div><div class="v ${ch?"flash":""}">${k===2?"$"+v:v}</div></div>`;}).join("");
+  prevM=m;
+  $("trigger").textContent=s.trigger;
+  $("b-woo").innerHTML=s.woo;
+  const br=s.br[mode];$("b-bridge").className="bubble "+br[0];$("b-bridge").innerHTML=br[1];
+  $("t-bridge").innerHTML=`<i style="background:var(--n8n-l)"></i>${sin?T.bridgeSin:T.bridgeCon}`;
+  const hb=s.hub[mode];$("b-hub").className="bubble "+hb[0];$("b-hub").innerHTML=hb[1];
+  brG.setAttribute("opacity",s.hubOnly?.45:1);
+  $("toc").innerHTML=MODS.map(([name,ks])=>`<div class="mod"><div class="mh"><span>${name}</span><span>${ks.filter(k=>seen.has(k)).length}/${ks.length}</span></div>${ks.map(k=>`<button type="button" class="les ${k===i?"now":seen.has(k)?"seen":""}" data-k="${k}"><span class="b"></span>${S[k].short}</button>`).join("")}</div>`).join("");
+  $("st-count").textContent=`${T.step} ${i+1} ${T.of} ${S.length}`;
+  $("track").innerHTML=S.map((x,k)=>`<button type="button" class="stp ${k===i?"now":seen.has(k)?"seen":""}" data-k="${k}" ${k===i?'aria-current="step"':""}><span class="n">${k+1}</span><span class="l">${x.short}</span></button>`).join("");
+  $("p-count").textContent=`${T.step} ${i+1} / ${S.length}`;
+  $("p-badge").textContent=s.badge[0];$("p-badge").className="badge "+s.badge[1];
+  $("p-title").textContent=s.title;$("p-story").textContent=s.story;
+  $("p-key").className="key "+mode;$("p-rk").textContent=sin?T.sin:T.con;$("p-res").textContent=s[mode];
+  $("p-demo").textContent=s.demo;$("p-link").href=L[s.link][0];$("p-link").textContent=L[s.link][1];
+  $("prev").disabled=i===0;
+  $("next").textContent=i===S.length-1?T.restart:`${T.next}${S[i+1].short} →`;
+  $("learn").innerHTML=LEARN.map(([k,t])=>`<li class="${seen.has(k)||(k===5&&seen.has(6))?"done":""}">${t}</li>`).join("");
+  if(anim) animate(sin&&!!s.lostSin, !!s.hubOnly);
+}
+function go(k){i=(k+S.length)%S.length;seen.add(i);render();}
+$("next").onclick=()=>go(i+1);
+$("prev").onclick=()=>{if(i>0)go(i-1);};
+$("replay").onclick=()=>animate(mode==="sin"&&!!S[i].lostSin,!!S[i].hubOnly);
+document.addEventListener("click",e=>{const b=e.target.closest("[data-k]");if(b)go(+b.dataset.k);});
+$("m-con").onclick=()=>{mode="con";render();};
+$("m-sin").onclick=()=>{mode="sin";render();};
+document.addEventListener("keydown",e=>{
+  if(e.key==="ArrowRight")go(i+1);
+  else if(e.key==="ArrowLeft"&&i>0)go(i-1);
+  else if(e.key==="c"||e.key==="C"){mode=mode==="con"?"sin":"con";render();}
+  else if(e.key==="r"||e.key==="R")$("replay").click();
+});
+const q=new URLSearchParams(location.search);
+if(q.has("step")){const n=+q.get("step")-1;if(n>=0&&n<S.length){i=n;for(let k=0;k<=i;k++)seen.add(k);}}
+if(q.has("step")||q.has("mode"))mode=q.get("mode")==="basic"?"sin":"con";
+render(false);
+setTimeout(()=>animate(mode==="sin"&&!!S[i].lostSin,!!S[i].hubOnly),400);
+</script>
+</body>
+</html>
