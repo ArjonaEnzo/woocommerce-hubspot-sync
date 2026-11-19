@@ -3,7 +3,7 @@
 // It is NOT HubSpot: it exists to test the n8n flows offline and to inject 429/5xx.
 // Run: node scripts/hubspot-mock.mjs   (PORT env, default 4010)
 import { createServer } from 'node:http';
-import { DEAL_PIPELINE, TICKET_PIPELINE } from '../src/lib/hubspot-schema.js';
+import { DEAL_PIPELINE, TICKET_PIPELINE } from '../src/lib/hubspot-schema.ts';
 
 const UNIQUE_ID_PROPS = {
   // Mirrors HubSpot: products cannot have unique-value properties; line items are not relied on either.

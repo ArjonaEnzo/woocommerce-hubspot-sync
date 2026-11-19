@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { PROPERTY_GROUP, PROPERTIES, DEAL_PIPELINE, TICKET_PIPELINE } from './hubspot-schema.js';
+import { PROPERTY_GROUP, PROPERTIES, DEAL_PIPELINE, TICKET_PIPELINE } from './hubspot-schema.ts';
 
-const names = (object) => PROPERTIES[object].map((p) => p.name);
-const prop = (object, name) => PROPERTIES[object].find((p) => p.name === name);
+const names = (object: string) => PROPERTIES[object].map((p) => p.name);
+const prop = (object: string, name: string) => PROPERTIES[object].find((p) => p.name === name);
 
 test('every object property lives in the woocommerce group', () => {
   assert.equal(PROPERTY_GROUP.name, 'woocommerce');

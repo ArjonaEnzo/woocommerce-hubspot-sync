@@ -6,7 +6,7 @@
 // → associations → error tickets. Every HubSpot call goes through the "HubSpot request" sub-workflow.
 import { IDS, code, subWorkflowTrigger, callWorkflow, workflow, chain } from './n8n.mjs';
 
-const LIBS = ['src/lib/validate.ts', 'src/lib/hubspot-schema.js', 'src/lib/retry.ts', 'src/lib/mapping.js', 'src/lib/sync-plan.js'];
+const LIBS = ['src/lib/validate.ts', 'src/lib/hubspot-schema.ts', 'src/lib/retry.ts', 'src/lib/mapping.js', 'src/lib/sync-plan.js'];
 
 export default function build({ inline }) {
   const lib = inline(LIBS);

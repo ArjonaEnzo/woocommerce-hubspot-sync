@@ -1,7 +1,7 @@
 // Turns a batch of Woo orders into the ordered list of HubSpot requests the sync-orders workflow makes.
 // Every function returns plain request objects { method, path, body, label } — or { skip: true, label }
 // when there is nothing to send — so the n8n flow stays linear and every step is unit-tested here.
-import { DEAL_PIPELINE, TICKET_PIPELINE } from './hubspot-schema.js';
+import { DEAL_PIPELINE, TICKET_PIPELINE } from './hubspot-schema.ts';
 import { chunk } from './retry.ts';
 import {
   buildContactInput, planCompanies, companyDomain, buildProductInputs, buildDealInput, buildLineItemInputs,

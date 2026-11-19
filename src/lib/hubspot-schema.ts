@@ -1,18 +1,42 @@
 // HubSpot schema the sync needs. Created idempotently by scripts/hubspot-setup.mjs.
+import type { StageKey } from './types.ts';
+
+export interface PropertyDef {
+  groupName: string;
+  name: string;
+  label: string;
+  type: 'string' | 'number' | 'date' | 'enumeration';
+  fieldType: 'text' | 'textarea' | 'number' | 'date' | 'select';
+  hasUniqueValue?: boolean;
+  options?: { value: string; label: string; displayOrder: number }[];
+}
+
+export interface StageDef<K extends string = string> {
+  key: K;
+  label: string;
+  displayOrder: number;
+  metadata: Record<string, string>;
+}
+
+export interface PipelineDef<K extends string = string> {
+  label: string;
+  displayOrder: number;
+  stages: StageDef<K>[];
+}
 
 export const PROPERTY_GROUP = { name: 'woocommerce', label: 'WooCommerce', displayOrder: -1 };
 
 const base = { groupName: PROPERTY_GROUP.name };
-const text = (name, label, extra = {}) => ({ ...base, name, label, type: 'string', fieldType: 'text', ...extra });
-const number = (name, label) => ({ ...base, name, label, type: 'number', fieldType: 'number' });
-const date = (name, label) => ({ ...base, name, label, type: 'date', fieldType: 'date' });
-const select = (name, label, values) => ({
+const text = (name: string, label: string, extra: Partial<PropertyDef> = {}): PropertyDef => ({ ...base, name, label, type: 'string', fieldType: 'text', ...extra });
+const number = (name: string, label: string): PropertyDef => ({ ...base, name, label, type: 'number', fieldType: 'number' });
+const date = (name: string, label: string): PropertyDef => ({ ...base, name, label, type: 'date', fieldType: 'date' });
+const select = (name: string, label: string, values: [string, string][]): PropertyDef => ({
   ...base, name, label, type: 'enumeration', fieldType: 'select',
   options: values.map(([value, optionLabel], displayOrder) => ({ value, label: optionLabel, displayOrder })),
 });
-const uniqueId = (name, label) => text(name, label, { hasUniqueValue: true });
+const uniqueId = (name: string, label: string) => text(name, label, { hasUniqueValue: true });
 
-export const PROPERTIES = {
+export const PROPERTIES: Record<string, PropertyDef[]> = {
   contacts: [
     text('woo_customer_id', 'Woo customer ID'),
     number('total_orders', 'Total orders (paid)'),
@@ -33,16 +57,16 @@ export const PROPERTIES = {
     text('woo_status', 'Woo order status'),
   ],
   // HubSpot does not support unique-value properties on products, so products are looked up by search and
-  // then updated or created (sync-plan.js). Line items do accept them (verified against the API 2026-11-16).
+  // then updated or created (sync-plan.ts). Line items do accept them (verified against the API 2026-11-16).
   products: [text('woo_product_id', 'Woo product ID')],
   line_items: [uniqueId('woo_line_item_key', 'Woo line item key')],
   // One ticket per distinct sync problem, so re-running the backfill never duplicates tickets.
   tickets: [uniqueId('sync_error_key', 'Sync error key')],
 };
 
-const stage = (key, label, displayOrder, metadata) => ({ key, label, displayOrder, metadata });
+const stage = <K extends string>(key: K, label: string, displayOrder: number, metadata: Record<string, string>): StageDef<K> => ({ key, label, displayOrder, metadata });
 
-export const DEAL_PIPELINE = {
+export const DEAL_PIPELINE: PipelineDef<StageKey> = {
   label: 'WooCommerce',
   displayOrder: 1,
   stages: [
@@ -54,7 +78,7 @@ export const DEAL_PIPELINE = {
   ],
 };
 
-export const TICKET_PIPELINE = {
+export const TICKET_PIPELINE: PipelineDef<'new' | 'resolved'> = {
   label: 'Integration errors',
   displayOrder: 1,
   stages: [

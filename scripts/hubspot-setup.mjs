@@ -3,7 +3,7 @@
 // ticket pipeline "Integration errors". Writes the ids n8n needs to .hubspot-ids.json (gitignored).
 // Needs HUBSPOT_SERVICE_KEY in the environment (or in a local env file loaded below). Never prints it.
 import { existsSync, writeFileSync } from 'node:fs';
-import { PROPERTY_GROUP, PROPERTIES, DEAL_PIPELINE, TICKET_PIPELINE } from '../src/lib/hubspot-schema.js';
+import { PROPERTY_GROUP, PROPERTIES, DEAL_PIPELINE, TICKET_PIPELINE } from '../src/lib/hubspot-schema.ts';
 
 const envFile = new URL('../.env', import.meta.url);
 if (!process.env.HUBSPOT_SERVICE_KEY && existsSync(envFile)) process.loadEnvFile(envFile);
@@ -71,7 +71,7 @@ for (const [objectType, props] of Object.entries(PROPERTIES)) {
       `/crm/v3/properties/${objectType}`, p);
     if (existing?.hubspotDefined) {
       throw new Error(`${objectType}.${p.name} is a HubSpot default property (group "${existing.groupName}"), `
-        + 'not ours — rename it in src/lib/hubspot-schema.js.');
+        + 'not ours — rename it in src/lib/hubspot-schema.ts.');
     }
     if (p.hasUniqueValue && existing && existing.hasUniqueValue === false) {
       throw new Error(`${objectType}.${p.name} exists but is not unique — upserts by it would fail. `
