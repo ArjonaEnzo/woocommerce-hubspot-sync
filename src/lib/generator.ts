@@ -1,6 +1,32 @@
 // Seeded fake-order generator. Everything here is fictional: names from short lists,
 // company domains are subdomains of IANA-reserved example.com (HubSpot rejects .test emails),
 // personal emails carry a "demo." prefix.
+import type { WooStatus } from './types.ts';
+
+export interface CatalogProduct {
+  sku: string;
+  price: number;
+}
+
+export interface GeneratedCustomer {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  country: string;
+  company: string;
+  registered: boolean;
+}
+
+export interface GeneratedOrder {
+  gen_id: string;
+  status: WooStatus;
+  date_created: string;
+  customer: GeneratedCustomer;
+  items: { sku: string; quantity: number }[];
+  total: number;
+  refund_amount: number;
+}
 
 const FIRST = ['Ana', 'Juan', 'Lucía', 'Martín', 'Sofía', 'Diego', 'Valentina', 'Tomás', 'Camila', 'Nicolás',
   'Julieta', 'Mateo', 'Florencia', 'Joaquín', 'Paula', 'Federico', 'Carolina', 'Gonzalo', 'Agustina', 'Bruno'];
@@ -24,10 +50,10 @@ const COMPANY_CUSTOMERS = 30; // 25 %
 const VIP = [30, 31, 32, 33, 34, 35];
 const DIRTY_FROM = 100; // customers 100..117 are dirty
 const DIRTY_COUNT = 18;
-const STATUS_POOL = { completed: 110, processing: 40, pending: 8, 'on-hold': 7, cancelled: 12, failed: 8, refunded: 15 };
+const STATUS_POOL: Record<WooStatus, number> = { completed: 110, processing: 40, pending: 8, 'on-hold': 7, cancelled: 12, failed: 8, refunded: 15 };
 const PARTIAL_REFUNDS = 10;
 
-function mulberry32(seed) {
+function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
@@ -38,16 +64,16 @@ function mulberry32(seed) {
   };
 }
 
-const slug = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-const round2 = (n) => Math.round(n * 100) / 100;
+const slug = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const round2 = (n: number) => Math.round(n * 100) / 100;
 
-function makeCustomer(i, rnd) {
-  const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
-  const first = FIRST[i % FIRST.length];
-  const last = LAST[Math.floor(i / FIRST.length + i) % LAST.length];
+function makeCustomer(i: number, rnd: () => number): GeneratedCustomer {
+  const pick = <T>(arr: T[]): T => arr[Math.floor(rnd() * arr.length)] as T;
+  const first = FIRST[i % FIRST.length] as string;
+  const last = LAST[Math.floor(i / FIRST.length + i) % LAST.length] as string;
   const country = i < COMPANY_CUSTOMERS ? 'AR' : pick(COUNTRIES);
   const local = `${slug(first)}.${slug(last)}`;
-  const customer = {
+  const customer: GeneratedCustomer = {
     first_name: first,
     last_name: last,
     email: `demo.${local}${i}@${pick(FREE_DOMAINS)}`,
@@ -60,7 +86,7 @@ function makeCustomer(i, rnd) {
   };
   if (country !== 'AR' && country !== 'US') customer.phone = '';
   if (i < COMPANY_CUSTOMERS) {
-    const company = COMPANIES[i % COMPANIES.length];
+    const company = COMPANIES[i % COMPANIES.length] as (typeof COMPANIES)[number];
     customer.email = `${local}@${company.domain}`;
     customer.company = i % 5 === 0 ? '' : company.name; // some leave the company field empty
   }
@@ -77,17 +103,19 @@ function makeCustomer(i, rnd) {
   return customer;
 }
 
-function shuffle(arr, rnd) {
+function shuffle<T>(arr: T[], rnd: () => number): T[] {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(rnd() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
+    [arr[i], arr[j]] = [arr[j] as T, arr[i] as T];
   }
   return arr;
 }
 
-export function generateOrders({ seed, count, catalog, now }) {
+export function generateOrders({ seed, count, catalog, now }: {
+  seed: number; count: number; catalog: CatalogProduct[]; now: Date;
+}): GeneratedOrder[] {
   const rnd = mulberry32(seed);
-  const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
+  const pick = <T>(arr: T[]): T => arr[Math.floor(rnd() * arr.length)] as T;
   const customers = Array.from({ length: CUSTOMERS }, (_, i) => makeCustomer(i, rnd));
 
   // Every customer buys once; VIPs buy 6 more times; the rest is spread over regular customers.
@@ -97,10 +125,10 @@ export function generateOrders({ seed, count, catalog, now }) {
   shuffle(owners, rnd);
   owners.length = count;
 
-  const statuses = shuffle(Object.entries(STATUS_POOL).flatMap(([s, n]) => Array(n).fill(s)), rnd);
-  const takeStatus = (paidOnly) => {
+  const statuses = shuffle((Object.entries(STATUS_POOL) as [WooStatus, number][]).flatMap(([s, n]) => Array<WooStatus>(n).fill(s)), rnd);
+  const takeStatus = (paidOnly: boolean): WooStatus => {
     const idx = paidOnly ? statuses.findIndex((s) => s === 'completed' || s === 'processing') : 0;
-    return statuses.splice(idx === -1 ? 0 : idx, 1)[0];
+    return statuses.splice(idx === -1 ? 0 : idx, 1)[0] as WooStatus;
   };
 
   const bigTicket = catalog.filter((p) => p.price >= 300);
@@ -109,14 +137,14 @@ export function generateOrders({ seed, count, catalog, now }) {
 
   const orders = owners.map((ownerIdx, n) => {
     const isVip = VIP.includes(ownerIdx);
-    const items = [];
+    const items: GeneratedOrder['items'] = [];
     if (isVip) items.push({ sku: pick(bigTicket).sku, quantity: 1 });
     const lines = 1 + Math.floor(rnd() * 3);
     for (let k = 0; k < lines; k++) {
       const p = pick(catalog);
       if (!items.some((it) => it.sku === p.sku)) items.push({ sku: p.sku, quantity: 1 + Math.floor(rnd() * 3) });
     }
-    const priceOf = (sku) => catalog.find((p) => p.sku === sku).price;
+    const priceOf = (sku: string) => (catalog.find((p) => p.sku === sku) as CatalogProduct).price;
     const total = round2(items.reduce((s, it) => s + priceOf(it.sku) * it.quantity, 0));
     const status = takeStatus(isVip);
     let refund_amount = 0;
@@ -130,7 +158,7 @@ export function generateOrders({ seed, count, catalog, now }) {
       gen_id: `gen-${String(n + 1).padStart(4, '0')}`,
       status,
       date_created: created.toISOString(),
-      customer: { ...customers[ownerIdx] },
+      customer: { ...(customers[ownerIdx] as GeneratedCustomer) },
       items,
       total,
       refund_amount,

@@ -1,15 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { generateOrders } from './generator.js';
+import { generateOrders } from './generator.ts';
+import type { CatalogProduct } from './generator.ts';
 import { validateCustomer } from './validate.ts';
 import { companyDomain } from './mapping.ts';
 
-const catalog = JSON.parse(readFileSync(new URL('../../data/catalog.json', import.meta.url)));
+const catalog: CatalogProduct[] = JSON.parse(readFileSync(new URL('../../data/catalog.json', import.meta.url), 'utf8'));
 const now = new Date('2026-11-15T12:00:00Z');
 const orders = generateOrders({ seed: 42, count: 200, catalog, now });
 
-const countBy = (arr, fn) => arr.reduce((m, x) => ((m[fn(x)] = (m[fn(x)] ?? 0) + 1), m), {});
+const countBy = <T>(arr: T[], fn: (x: T) => unknown) =>
+  arr.reduce<Record<string, number>>((m, x) => ((m[String(fn(x))] = (m[String(fn(x))] ?? 0) + 1), m), {});
 const PAID = new Set(['processing', 'completed']);
 
 test('same seed produces identical output', () => {
@@ -53,7 +55,7 @@ test('between 100 and 140 unique customers, so repeat buyers exist', () => {
 });
 
 test('at least 5 VIP customers (paid net revenue > 1000)', () => {
-  const rev = {};
+  const rev: Record<string, number> = {};
   for (const o of orders.filter((x) => PAID.has(x.status))) {
     rev[o.customer.email] = (rev[o.customer.email] ?? 0) + o.total - o.refund_amount;
   }

@@ -3,7 +3,7 @@
 // Usage: node scripts/generate-orders.mjs --seed 42 --count 200 [--now 2026-11-15T12:00:00Z]
 import { readFileSync, writeFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
-import { generateOrders } from '../src/lib/generator.js';
+import { generateOrders } from '../src/lib/generator.ts';
 
 const { values } = parseArgs({
   options: {
