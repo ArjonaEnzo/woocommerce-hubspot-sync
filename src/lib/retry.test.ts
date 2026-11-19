@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { shouldRetry, backoffDelayMs, chunk } from './retry.js';
+import { shouldRetry, backoffDelayMs, chunk } from './retry.ts';
 
 test('shouldRetry on rate limit and server errors only', () => {
   for (const s of [429, 500, 502, 503, 599]) assert.equal(shouldRetry(s), true, String(s));

@@ -6,7 +6,7 @@
 import { IDS, CREDENTIALS, code, node, subWorkflowTrigger, ifTrue, workflow } from './n8n.mjs';
 
 export default function build({ inline }) {
-  const lib = inline(['src/lib/retry.js']);
+  const lib = inline(['src/lib/retry.ts']);
   const req = "$('Prepare').first().json";
   const http = (name, bodyParams) => node(name, 'n8n-nodes-base.httpRequest', 4.2, {
     method: `={{ ${req}.method }}`,
