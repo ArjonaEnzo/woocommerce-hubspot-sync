@@ -7,6 +7,22 @@ written down here precisely enough to rebuild them by hand in a few minutes.
 Portal: a HubSpot **developer test account** (free, 90-day Enterprise trial). Workflows need a
 Professional or Enterprise hub; a Free portal does not have them.
 
+## Service Key scopes
+
+Least privilege: CRM objects and schemas only, nothing else (no users, settings, files, marketing email or
+automation). Read from the key itself on 2026-11-19 (`POST /oauth/v2/private-apps/get/access-token-info`):
+
+| Scope | Used by |
+|---|---|
+| `crm.objects.{contacts,companies,deals,line_items,products,tickets}.read` + `.write` | the sync (batch upserts, searches, associations) and `verify-hubspot.mjs` (reads) |
+| `crm.schemas.{contacts,companies,deals,line_items,tickets}.read` | the sync and the verifier read pipelines and stage ids |
+| `crm.schemas.{contacts,companies,deals,tickets}.write` | `hubspot-setup.mjs` only: custom properties and the two pipelines |
+| `e-commerce` | products and line items (HubSpot groups them under this scope) |
+| `oauth` | added by HubSpot to every key |
+
+The schema write scopes are only needed once. In a real deployment, run `hubspot-setup.mjs` with a separate
+setup key and give the key n8n uses objects + schema **read** scopes only.
+
 ## Before the first sync: one setting
 
 **Settings → Objects → Companies → "Create and associate companies with contacts": OFF.**
