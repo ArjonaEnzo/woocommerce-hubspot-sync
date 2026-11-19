@@ -2,27 +2,43 @@
 // Every function returns plain request objects { method, path, body, label } — or { skip: true, label }
 // when there is nothing to send — so the n8n flow stays linear and every step is unit-tested here.
 import { DEAL_PIPELINE, TICKET_PIPELINE } from './hubspot-schema.ts';
+import type { PipelineDef } from './hubspot-schema.ts';
 import { chunk } from './retry.ts';
 import {
   buildContactInput, planCompanies, companyDomain, buildProductInputs, buildDealInput, buildLineItemInputs,
   aggregateCustomer,
 } from './mapping.ts';
+import type {
+  BatchInput, HubSpotRequest, HubSpotResponse, PipelineContext, Properties, RequestBody, SyncProblem, UpsertInput, WooOrder,
+} from './types.ts';
+
+type IdMap = Map<string, string>;
+type PipelineList = {
+  results?: { id: string; label: string; stages: { id: string; label: string }[] }[];
+} | null | undefined;
+interface AssociationIds {
+  orders: WooOrder[];
+  contactIds: IdMap;
+  companyIds: IdMap;
+  dealIds: IdMap;
+  lineItemIds: IdMap;
+}
 
 const BATCH = 100;
-const skip = (label) => ({ skip: true, label });
-const post = (path, body, label) => ({ method: 'POST', path, body, label });
+const skip = (label: string): HubSpotRequest => ({ skip: true, label });
+const post = (path: string, body: RequestBody, label: string): HubSpotRequest => ({ method: 'POST', path, body, label });
 // Batch writes tolerate 4xx: HubSpot rejects a whole batch for one bad record, and that must become a
 // ticket naming the records, not abort the other 99 orders. `ids` lets the ticket say which records.
-const batches = (path, inputs, label, idOf = (i) => i.id) =>
+const batches = <T extends BatchInput>(path: string, inputs: T[], label: string, idOf: (input: T) => unknown = (i) => i.id): HubSpotRequest[] =>
   (inputs.length
     ? chunk(inputs, BATCH).map((part, i) => ({
       ...post(path, { inputs: part }, `${label} ${i + 1}`), tolerateClientError: true, ids: part.map(idOf).map(String),
     }))
     : [skip(label)]);
-const lower = (s) => String(s ?? '').trim().toLowerCase();
+const lower = (s: unknown) => String(s ?? '').trim().toLowerCase();
 
 /** Searches `objectType` for records whose `property` is any of `values` (≤100 values per search). */
-function searchIn(objectType, property, values, label) {
+function searchIn(objectType: string, property: string, values: unknown[], label: string): HubSpotRequest[] {
   const unique = [...new Set(values.map(String))];
   if (!unique.length) return [skip(label)];
   return chunk(unique, BATCH).map((part, i) => post(`/crm/v3/objects/${objectType}/search`, {
@@ -33,15 +49,15 @@ function searchIn(objectType, property, values, label) {
 }
 
 /** For objects HubSpot cannot upsert by our key: update what the search found, create the rest. */
-function updateOrCreate(objectType, key, items, found, label) {
-  const updates = [];
-  const creates = [];
+function updateOrCreate(objectType: string, key: string, items: Properties[], found: IdMap, label: string): HubSpotRequest[] {
+  const updates: { id: string; properties: Properties }[] = [];
+  const creates: { properties: Properties }[] = [];
   for (const properties of items) {
     const id = found.get(lower(properties[key]));
     if (id) updates.push({ id, properties });
     else creates.push({ properties });
   }
-  const idOf = (i) => i.properties[key];
+  const idOf = (i: { properties: Properties }) => i.properties[key];
   const requests = [
     ...(updates.length ? batches(`/crm/v3/objects/${objectType}/batch/update`, updates, `${label} update`, idOf) : []),
     ...(creates.length ? batches(`/crm/v3/objects/${objectType}/batch/create`, creates, `${label} create`, idOf) : []),
@@ -49,11 +65,11 @@ function updateOrCreate(objectType, key, items, found, label) {
   return requests.length ? requests : [skip(label)];
 }
 
-export function pipelineContext(dealPipelines, ticketPipelines) {
-  const find = (list, def) => {
+export function pipelineContext(dealPipelines: PipelineList, ticketPipelines: PipelineList): Required<PipelineContext> {
+  const find = <K extends string>(list: PipelineList, def: PipelineDef<K>) => {
     const p = (list?.results ?? []).find((x) => x.label === def.label);
     if (!p) throw new Error(`HubSpot pipeline "${def.label}" not found — run scripts/hubspot-setup.mjs first`);
-    const ids = {};
+    const ids = {} as Record<K, string>;
     for (const s of def.stages) {
       const stage = p.stages.find((x) => x.label === s.label);
       if (!stage) throw new Error(`Stage "${s.label}" missing in pipeline "${def.label}" — run scripts/hubspot-setup.mjs`);
@@ -66,23 +82,23 @@ export function pipelineContext(dealPipelines, ticketPipelines) {
   return { pipelineId: deals.id, stageIds: deals.ids, ticketPipelineId: tickets.id, ticketStageNewId: tickets.ids.new };
 }
 
-export function contactRequests(orders, history) {
-  const byEmail = new Map();
+export function contactRequests(orders: WooOrder[], history: WooOrder[]): HubSpotRequest[] {
+  const byEmail = new Map<string, ReturnType<typeof buildContactInput>>();
   for (const order of orders) {
     const contact = buildContactInput(order);
     if (contact.email) byEmail.set(contact.email, contact);
   }
   const inputs = [...byEmail.values()].map(({ email, properties }) => {
     const agg = aggregateCustomer(history.filter((o) => lower(o.billing?.email) === email));
-    const extra = Object.fromEntries(Object.entries(agg).filter(([, v]) => v !== null));
-    return { idProperty: 'email', id: email, properties: { ...properties, ...extra } };
+    const extra = Object.fromEntries(Object.entries(agg).filter(([, v]) => v !== null)) as Properties;
+    return { idProperty: 'email', id: email as string, properties: { ...properties, ...extra } };
   });
   return batches('/crm/v3/objects/contacts/batch/upsert', inputs, 'contacts');
 }
 
 // One company per business domain, enforced by HubSpot through the unique woo_company_domain property.
 // (A search-then-create version raced: concurrent webhooks for a new domain each created a company.)
-export function companyRequests(orders) {
+export function companyRequests(orders: WooOrder[]): HubSpotRequest[] {
   const inputs = planCompanies(orders).map((c) => ({
     idProperty: 'woo_company_domain',
     id: c.domain,
@@ -91,17 +107,17 @@ export function companyRequests(orders) {
   return batches('/crm/v3/objects/companies/batch/upsert', inputs, 'companies');
 }
 
-export const productSearchRequests = (orders) =>
+export const productSearchRequests = (orders: WooOrder[]): HubSpotRequest[] =>
   searchIn('products', 'woo_product_id', buildProductInputs(orders).map((p) => p.id), 'product search');
 
-export const productWriteRequests = (orders, searchResponses) => updateOrCreate(
+export const productWriteRequests = (orders: WooOrder[], searchResponses: HubSpotResponse[]): HubSpotRequest[] => updateOrCreate(
   'products', 'woo_product_id', buildProductInputs(orders).map((p) => p.properties),
   idMap(searchResponses, 'woo_product_id'), 'products',
 );
 
-export function dealRequests(orders, ctx) {
-  const inputs = [];
-  const problems = [];
+export function dealRequests(orders: WooOrder[], ctx: PipelineContext) {
+  const inputs: UpsertInput[] = [];
+  const problems: SyncProblem[] = [];
   for (const order of orders) {
     try {
       inputs.push(buildDealInput(order, ctx));
@@ -109,7 +125,7 @@ export function dealRequests(orders, ctx) {
       problems.push({
         key: `unknown-status:${order.id}`,
         subject: `Woo order #${order.number ?? order.id} not synced: unknown status`,
-        content: err.message,
+        content: (err as Error).message,
         priority: 'HIGH',
       });
     }
@@ -119,7 +135,7 @@ export function dealRequests(orders, ctx) {
 
 // Upsert by the unique woo_line_item_key: one line item per Woo order item even when order.created and
 // order.updated webhooks are processed at the same time (search-then-create duplicated them).
-export function lineItemRequests(orders, productIds) {
+export function lineItemRequests(orders: WooOrder[], productIds: IdMap): HubSpotRequest[] {
   const inputs = orders.flatMap(buildLineItemInputs).map(({ wooProductId, ...input }) => {
     const hsProductId = productIds.get(wooProductId);
     return hsProductId ? { ...input, properties: { ...input.properties, hs_product_id: hsProductId } } : input;
@@ -128,8 +144,8 @@ export function lineItemRequests(orders, productIds) {
 }
 
 /** value of `property` (lowercased) → HubSpot record id, from any number of batch/search responses. */
-export function idMap(responses, property) {
-  const map = new Map();
+export function idMap(responses: (HubSpotResponse | null | undefined)[], property: string): IdMap {
+  const map: IdMap = new Map();
   for (const r of responses) {
     for (const rec of r?.body?.results ?? []) {
       const value = rec.properties?.[property];
@@ -139,9 +155,10 @@ export function idMap(responses, property) {
   return map;
 }
 
-export function associationRequests({ orders, contactIds, companyIds, dealIds, lineItemIds }) {
-  const pairs = { 'contacts/companies': new Map(), 'deals/contacts': new Map(), 'deals/companies': new Map(), 'line_items/deals': new Map() };
-  const add = (kind, from, to) => { if (from && to) pairs[kind].set(`${from}>${to}`, { from: { id: from }, to: { id: to } }); };
+export function associationRequests({ orders, contactIds, companyIds, dealIds, lineItemIds }: AssociationIds): HubSpotRequest[] {
+  type Pair = { from: { id: string }; to: { id: string } };
+  const pairs: Record<string, Map<string, Pair>> = { 'contacts/companies': new Map(), 'deals/contacts': new Map(), 'deals/companies': new Map(), 'line_items/deals': new Map() };
+  const add = (kind: string, from: string | undefined, to: string | undefined) => { if (from && to) pairs[kind]?.set(`${from}>${to}`, { from: { id: from }, to: { id: to } }); };
   for (const order of orders) {
     const email = lower(order.billing?.email);
     const contactId = contactIds.get(email);
@@ -158,8 +175,8 @@ export function associationRequests({ orders, contactIds, companyIds, dealIds, l
     : skip(`associate ${kind}`)));
 }
 
-export function syncProblems(orders, responses, extra = []) {
-  const problems = [];
+export function syncProblems(orders: WooOrder[], responses: (HubSpotResponse | null | undefined)[], extra: SyncProblem[] = []): SyncProblem[] {
+  const problems: SyncProblem[] = [];
   for (const order of orders) {
     const contact = buildContactInput(order);
     if (!contact.email) {
@@ -188,8 +205,8 @@ export function syncProblems(orders, responses, extra = []) {
     for (const e of r?.body?.errors ?? []) {
       for (const id of e.context?.ids ?? ['unknown']) {
         problems.push({
-          key: `batch:${String(r.label).replace(/ \d+$/, '')}:${id}`,
-          subject: `HubSpot rejected ${r.label} record ${id}`,
+          key: `batch:${String(r?.label).replace(/ \d+$/, '')}:${id}`,
+          subject: `HubSpot rejected ${r?.label} record ${id}`,
           content: `${e.category ?? 'ERROR'}: ${e.message ?? ''}`.slice(0, 2000),
           priority: 'HIGH',
         });
@@ -199,12 +216,12 @@ export function syncProblems(orders, responses, extra = []) {
   return [...problems, ...extra];
 }
 
-export function ticketReadRequest(problems) {
+export function ticketReadRequest(problems: SyncProblem[]): HubSpotRequest {
   if (!problems.length) return skip('ticket lookup');
-  return searchIn('tickets', 'sync_error_key', problems.slice(0, BATCH).map((p) => p.key), 'ticket lookup')[0];
+  return searchIn('tickets', 'sync_error_key', problems.slice(0, BATCH).map((p) => p.key), 'ticket lookup')[0] as HubSpotRequest;
 }
 
-export function ticketCreateRequest(problems, readResponse, ctx) {
+export function ticketCreateRequest(problems: SyncProblem[], readResponse: HubSpotResponse | null | undefined, ctx: PipelineContext): HubSpotRequest {
   const existing = idMap([readResponse], 'sync_error_key');
   const inputs = problems.slice(0, BATCH)
     .filter((p) => !existing.has(lower(p.key)))
@@ -219,6 +236,6 @@ export function ticketCreateRequest(problems, readResponse, ctx) {
       },
     }));
   return inputs.length
-    ? batches('/crm/v3/objects/tickets/batch/create', inputs, 'tickets', (i) => i.properties.sync_error_key)[0]
+    ? batches('/crm/v3/objects/tickets/batch/create', inputs, 'tickets', (i) => i.properties.sync_error_key)[0] as HubSpotRequest
     : skip('tickets');
 }

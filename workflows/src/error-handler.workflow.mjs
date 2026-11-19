@@ -4,7 +4,7 @@
 import { IDS, code, node, callWorkflow, workflow, chain } from './n8n.mjs';
 
 export default function build({ inline }) {
-  const lib = inline(['src/lib/hubspot-schema.ts', 'src/lib/retry.ts', 'src/lib/validate.ts', 'src/lib/mapping.ts', 'src/lib/sync-plan.js']);
+  const lib = inline(['src/lib/hubspot-schema.ts', 'src/lib/retry.ts', 'src/lib/validate.ts', 'src/lib/mapping.ts', 'src/lib/sync-plan.ts']);
   const nodes = [
     node('On error', 'n8n-nodes-base.errorTrigger', 1),
     code('Pipelines req', `return [

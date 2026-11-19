@@ -3,7 +3,7 @@
 // Exit code 1 if there are duplicate deals or Woo orders without a deal.
 // Uses VERIFY_HUBSPOT_URL (default https://api.hubapi.com; http://localhost:4010 for the mock).
 import { existsSync } from 'node:fs';
-import { pipelineContext } from '../src/lib/sync-plan.js';
+import { pipelineContext } from '../src/lib/sync-plan.ts';
 import { verifyReport } from '../src/lib/verify.ts';
 
 const envFile = new URL('../.env', import.meta.url);

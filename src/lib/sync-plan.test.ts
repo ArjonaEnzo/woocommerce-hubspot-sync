@@ -5,9 +5,10 @@ import {
   pipelineContext, contactRequests, companyRequests, productSearchRequests,
   productWriteRequests, dealRequests, lineItemRequests, idMap, associationRequests,
   ticketReadRequest, ticketCreateRequest, syncProblems,
-} from './sync-plan.js';
+} from './sync-plan.ts';
+import type { HubSpotResponse, WooOrder } from './types.ts';
 
-const fixture = (name) => JSON.parse(readFileSync(new URL(`./fixtures/${name}.json`, import.meta.url)));
+const fixture = (name: string): WooOrder => JSON.parse(readFileSync(new URL(`./fixtures/${name}.json`, import.meta.url), 'utf8'));
 const completed = fixture('order-completed-company'); // ana@acme-andina.test, items 501/502
 const partial = fixture('order-guest-partial-refund'); // juan@gmial.con (invalid)
 const refunded = fixture('order-refunded'); // lucia@acme-andina.test
@@ -21,7 +22,7 @@ const dealPipelines = { results: [
 ] };
 const ticketPipelines = { results: [{ id: 't1', label: 'Integration errors', stages: [{ id: 'tn', label: 'New' }, { id: 'tr', label: 'Resolved' }] }] };
 const ctx = pipelineContext(dealPipelines, ticketPipelines);
-const ok = (results, status = 200) => ({ ok: true, status, body: { status: 'COMPLETE', results } });
+const ok = (results: { id: string; properties: Record<string, string> }[], status = 200): HubSpotResponse => ({ ok: true, status, body: { status: 'COMPLETE', results } });
 
 test('pipelineContext maps stage labels to ids', () => {
   assert.deepEqual(ctx, {
@@ -97,7 +98,7 @@ test('lineItemRequests upserts by the unique woo_line_item_key, chunked at 100, 
   assert.equal(first.idProperty, 'woo_line_item_key');
   assert.equal(first.id, '5000');
   assert.equal(first.properties.hs_product_id, 'hs-1000');
-  assert.equal(first.wooProductId, undefined, 'internal fields are not sent to HubSpot');
+  assert.equal((first as Record<string, unknown>).wooProductId, undefined, 'internal fields are not sent to HubSpot');
   assert.equal(reqs[0].tolerateClientError, true);
 });
 
@@ -136,7 +137,7 @@ test('associationRequests links contact↔company, deal↔contact, deal↔compan
 });
 
 test('syncProblems reports orders without a valid email and batch errors, with stable keys', () => {
-  const batch = { ok: true, status: 207, label: 'deals', body: { results: [], errors: [
+  const batch: HubSpotResponse = { ok: true, status: 207, label: 'deals', body: { results: [], errors: [
     { status: 'error', category: 'VALIDATION_ERROR', message: 'Property "foo" does not exist', context: { ids: ['105'] } },
   ] } };
   const problems = syncProblems(orders, [batch]);
